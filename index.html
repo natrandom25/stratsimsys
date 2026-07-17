@@ -6,7 +6,7 @@
 <title>SSS Studio</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap');
-:root{ --bg:#FFFFFF; --surface:#F8F9FA; --text:#1A1A2E; --muted:#666680; --border:#E2E4EA; --accent:#0F6E56; --radius:10px; }
+:root{ --bg:#FFFFFF; --surface:#FFF6F6; --text:#1A1A1A; --muted:#8A5B5B; --border:#F2C9C9; --accent:#B3272D; --radius:10px; }
 *{box-sizing:border-box;}
 body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;line-height:1.6;padding:0 0 80px;}
 h1{font-family:'Playfair Display',serif;font-size:2rem;margin:0 0 4px;}
@@ -41,7 +41,7 @@ button:disabled{opacity:0.5;cursor:not-allowed;}
 <body>
 <div class="wrap">
   <h1>SSS Studio</h1>
-  <p class="intro">Generates the SSS master-prompt text for an LLM to fill in, validates the JSON it hands back against the deck's structural rules, and builds a single-file deck from it. Covers two domains &mdash; MBA/EMBA and Software &amp; Systems Engineering &mdash; each with its own schema, voice rules, and slide-type menu. Runs entirely in your browser &mdash; no API key, no backend. This page must be served over http/https (e.g. GitHub Pages, or <code>python -m http.server</code> locally) and sit in the same folder as <code>engine.template.html</code>, <code>content.schema.json</code>, and <code>content-engineering.schema.json</code> &mdash; opening it directly as a local file will break the fetch steps below.</p>
+  <p class="intro">Fill in your deck details, generate a prompt, hand it to any LLM, paste back what it gives you, and download a ready-to-teach slide deck. Covers two domains &mdash; MBA/EMBA and Software &amp; Systems Engineering. Runs entirely in your browser &mdash; no API key, no backend, nothing sent anywhere. One requirement: open this page through its web address (the link you were given, or GitHub Pages), not by double-clicking the file on your computer &mdash; opened as a local file, the steps below won't load.</p>
 
   <div class="step">
     <h2><span class="step-num">1</span>Deck details</h2>
@@ -50,7 +50,7 @@ button:disabled{opacity:0.5;cursor:not-allowed;}
       <option value="mba">MBA / EMBA / Executive Education</option>
       <option value="engineering">Software &amp; Systems Engineering</option>
     </select>
-    <p class="hint">Not a cosmetic switch &mdash; each domain has its own voice rules, bridging framework, Part structure, and slide-type menu (see <code>content.schema.json</code> vs <code>content-engineering.schema.json</code>). Engineering scope is software/CS-flavored systems engineering (distributed systems, databases, networking, security, ML infra) &mdash; not embedded, electrical, or mechanical.</p>
+    <p class="hint">Not a cosmetic switch &mdash; each domain has its own voice, structure, and slide types built for that audience. Engineering scope is software/CS-flavored systems engineering (distributed systems, databases, networking, security, ML infra) &mdash; not embedded, electrical, or mechanical.</p>
     <div class="grid">
       <div>
         <label for="topic">Topic *</label>
@@ -100,7 +100,7 @@ button:disabled{opacity:0.5;cursor:not-allowed;}
 
   <div class="step">
     <h2><span class="step-num">2</span>Generate the content prompt</h2>
-    <p class="hint">Builds a prompt that embeds the live <code>content.schema.json</code> and the SSS voice rules, ready to paste into Claude, ChatGPT, or any LLM of your choice.</p>
+    <p class="hint">Builds a ready-to-paste prompt with the full brief and structural rules baked in &mdash; hand it to Claude, ChatGPT, or any LLM of your choice.</p>
     <button id="genPromptBtn">Generate Prompt</button>
     <button id="copyPromptBtn" class="secondary" disabled>Copy to Clipboard</button>
     <div id="promptStatus" class="status"></div>
@@ -117,7 +117,7 @@ button:disabled{opacity:0.5;cursor:not-allowed;}
 
   <div class="step">
     <h2><span class="step-num">4</span>Preview &amp; download</h2>
-    <p class="hint">Only enabled once validation passes. Fetches <code>engine.template.html</code> and merges it with your content client-side &mdash; the same operation <code>build.py</code> does, done in the browser instead.</p>
+    <p class="hint">Only enabled once validation passes. Builds your finished deck as a single file, ready to download and open.</p>
     <button id="buildBtn" disabled>Build Deck</button>
     <button id="downloadBtn" class="secondary" disabled>Download Deck (.html)</button>
     <div id="buildStatus" class="status"></div>
