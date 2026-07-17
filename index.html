@@ -212,7 +212,7 @@ STRUCTURE REQUIREMENTS
 - "parts" is an array of exactly 7 objects, partNumber 0 through 6, in order.
 - Part 0 has exactly one "title" slide.
 - Parts 1-6 each need exactly one "strategic-pause" slide as their closing synthesis, and a slide count within: Part 1 (4-5), Part 2 (5-6), Part 3 (5-6), Part 4 (5-6), Part 5 (4-5), Part 6 (3-4).
-- Across the whole deck: at least 2 "simulation" slides in Part 3, at least 1 in Part 4, at least 1 more somewhere in Parts 1/2/5/6, and at least 5 total. Each simulation's "simulationTemplate" must be one of: "network-growth", "before-after-toggle", "decision-tree", "data-story-reveal", "flow-reveal" (pick whichever fits the concept -- only "network-growth" and "before-after-toggle" render today, the rest show a labeled placeholder, which is fine).
+- Across the whole deck: at least 2 "simulation" slides in Part 3, at least 1 in Part 4, at least 1 more somewhere in Parts 1/2/5/6, and at least 5 total. Each simulation's "simulationTemplate" must be one of: "network-growth", "before-after-toggle", "decision-tree", "data-story-reveal", "flow-reveal" (pick whichever fits the concept -- "network-growth", "before-after-toggle", and "flow-reveal" render today; "decision-tree" and "data-story-reveal" still show a labeled placeholder, which is fine). If you use "flow-reveal", set "simulationData" to {"stages": [{"label": "...", "detail": "..."}, ...]} with 3-6 stages.
 - "quiz" is an array of exactly 10 questions: 2 tagged to each of Part 1-4, 1 each to Part 5 and Part 6. Each needs "options" A-D and a "correctAnswer" in that set, plus a 2-3 sentence "explanation".
 
 OUTPUT FORMAT
@@ -259,7 +259,7 @@ STRUCTURE REQUIREMENTS
 - Part 5 -- Failure Modes, Tradeoffs & Operational Risk (4-5 slides): what breaks, when this is the wrong choice, on-call burden.
 - Part 6 -- The Future & Engineering Roadmap Decisions (3-4 slides): close with a concrete "what would you design" scenario.
 - Each Part 1-6 needs exactly one "architecture-checkpoint" slide (NOT "strategic-pause" -- that type name belongs to the MBA domain only) as its closing synthesis.
-- Across the whole deck: at least 2 "simulation" slides in Part 3, at least 1 in Part 4, at least 1 more somewhere in Parts 1/2/5/6, and at least 5 total. "simulationTemplate" must be one of: "network-growth", "before-after-toggle", "decision-tree", "data-story-reveal", "flow-reveal" (only the first two actually render today; the rest show a labeled placeholder, which is fine).
+- Across the whole deck: at least 2 "simulation" slides in Part 3, at least 1 in Part 4, at least 1 more somewhere in Parts 1/2/5/6, and at least 5 total. "simulationTemplate" must be one of: "network-growth", "before-after-toggle", "decision-tree", "data-story-reveal", "flow-reveal" ("network-growth", "before-after-toggle", and "flow-reveal" actually render today; "decision-tree" and "data-story-reveal" show a labeled placeholder, which is fine). If you use "flow-reveal", set "simulationData" to {"stages": [{"label": "...", "detail": "..."}, ...]} with 3-6 stages.
 - Available slide types: statement, evidence, comparison-matrix, process-flow, case-study, simulation, architecture-checkpoint, data-story, framework-card, architecture-diagram, protocol-stack, algorithm-card, benchmark-card, mathematical-model.
 - "quiz" is an array of exactly 10 questions: 2 tagged to each of Part 1-4, 1 each to Part 5 and Part 6. Each needs "options" A-D and a "correctAnswer" in that set, plus a 2-3 sentence "explanation".
 
