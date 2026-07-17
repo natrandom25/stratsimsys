@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SSS Studio</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap');
+:root{ --bg:#FFFFFF; --surface:#F8F9FA; --text:#1A1A2E; --muted:#666680; --border:#E2E4EA; --accent:#0F6E56; --radius:10px; }
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;line-height:1.6;padding:0 0 80px;}
+h1{font-family:'Playfair Display',serif;font-size:2rem;margin:0 0 4px;}
+h2{font-family:'Playfair Display',serif;font-size:1.4rem;margin:0 0 12px;border-bottom:2px solid var(--border);padding-bottom:8px;}
+.wrap{max-width:920px;margin:0 auto;padding:32px 24px;}
+.intro{color:var(--muted);margin-bottom:32px;max-width:70ch;}
+.step{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:24px;}
+.step-num{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:0.8rem;font-weight:600;margin-right:8px;}
+label{display:block;font-size:0.85rem;font-weight:600;margin:14px 0 4px;}
+label:first-child{margin-top:0;}
+input[type=text],input[type=email],input[type=number],select,textarea{
+  width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.95rem;background:#fff;color:var(--text);
+}
+textarea{font-family:'JetBrains Mono',monospace;font-size:12.5px;min-height:180px;resize:vertical;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:0 20px;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 20px;}
+.checkbox-row{display:flex;align-items:center;gap:8px;margin-top:16px;}
+.checkbox-row input{width:auto;}
+button{font-family:inherit;cursor:pointer;min-height:40px;padding:9px 20px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-weight:600;font-size:0.9rem;margin-top:16px;margin-right:8px;}
+button.secondary{background:#fff;color:var(--text);border:1px solid var(--border);}
+button:disabled{opacity:0.5;cursor:not-allowed;}
+.hint{font-size:0.8rem;color:var(--muted);margin-top:4px;}
+.error-list{background:#fdecea;border:1px solid #f5c2c0;border-radius:8px;padding:12px 16px;margin-top:12px;color:#8a2b25;font-size:0.9rem;}
+.error-list li{margin:4px 0;}
+.success-box{background:#e8f5e9;border:1px solid #b9dfbc;border-radius:8px;padding:12px 16px;margin-top:12px;color:#1a5e20;font-size:0.9rem;}
+.cert-fields{display:none;}
+.cert-fields.show{display:block;}
+#previewFrame{width:100%;height:520px;border:1px solid var(--border);border-radius:var(--radius);margin-top:16px;}
+.status{font-size:0.85rem;color:var(--muted);margin-top:8px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>SSS Studio</h1>
+  <p class="intro">Generates the SSS master-prompt text for an LLM to fill in, validates the JSON it hands back against the deck's structural rules, and builds a single-file deck from it. Covers two domains &mdash; MBA/EMBA and Software &amp; Systems Engineering &mdash; each with its own schema, voice rules, and slide-type menu. Runs entirely in your browser &mdash; no API key, no backend. This page must be served over http/https (e.g. GitHub Pages, or <code>python -m http.server</code> locally) and sit in the same folder as <code>engine.template.html</code>, <code>content.schema.json</code>, and <code>content-engineering.schema.json</code> &mdash; opening it directly as a local file will break the fetch steps below.</p>
+
+  <div class="step">
+    <h2><span class="step-num">1</span>Deck details</h2>
+    <label for="domain">Domain</label>
+    <select id="domain">
+      <option value="mba">MBA / EMBA / Executive Education</option>
+      <option value="engineering">Software &amp; Systems Engineering</option>
+    </select>
+    <p class="hint">Not a cosmetic switch &mdash; each domain has its own voice rules, bridging framework, Part structure, and slide-type menu (see <code>content.schema.json</code> vs <code>content-engineering.schema.json</code>). Engineering scope is software/CS-flavored systems engineering (distributed systems, databases, networking, security, ML infra) &mdash; not embedded, electrical, or mechanical.</p>
+    <div class="grid">
+      <div>
+        <label for="topic">Topic *</label>
+        <input type="text" id="topic" placeholder="e.g. Blockchain in Supply Chain Management">
+      </div>
+      <div>
+        <label for="audience">Audience</label>
+        <select id="audience"><option>MBA</option><option>EMBA</option><option>Executive Education</option></select>
+      </div>
+    </div>
+    <div class="grid-3">
+      <div><label for="facultyName">Faculty name</label><input type="text" id="facultyName" value="Dr. Natraj N. A."></div>
+      <div><label for="facultyTitle">Faculty title</label><input type="text" id="facultyTitle" value="Assistant Professor (Grade-11), SIDTM"></div>
+      <div><label for="facultyEmail">Faculty email</label><input type="email" id="facultyEmail" value="natraj@sidtm.edu.in"></div>
+    </div>
+    <div><label for="institution">Institution</label><input type="text" id="institution" value="Symbiosis International University, Pune - 412115"></div>
+    <div class="grid-3">
+      <div><label for="courseCode">Course code</label><input type="text" id="courseCode" placeholder="e.g. SCM-712"></div>
+      <div><label for="subjectName">Subject name</label><input type="text" id="subjectName" placeholder="e.g. Digital Supply Chain Strategy"></div>
+      <div><label for="batch">Batch</label><input type="text" id="batch" placeholder="e.g. PGDM 2025-27"></div>
+    </div>
+    <div class="grid-3">
+      <div><label for="academicYear">Academic year</label><input type="text" id="academicYear" placeholder="e.g. 2026-27"></div>
+      <div><label for="duration">Duration</label><input type="text" id="duration" value="2 Hours"></div>
+      <div><label for="slideCountPreset">Slide count</label><select id="slideCountPreset"><option>40</option><option>50</option><option>60</option></select></div>
+    </div>
+    <label for="theme">Theme</label>
+    <select id="theme"><option>Academic</option><option>Corporate</option><option>Dark</option><option>Telecom</option><option>Blockchain</option></select>
+    <p class="hint">Each theme is a fixed 6-color palette. Part accent colors are semantic (Section 5/6 of the master prompt), so they aren't freely recolorable here.</p>
+
+    <div class="checkbox-row"><input type="checkbox" id="certEnabled"><label for="certEnabled" style="margin:0;">Include a Certificate of Participation</label></div>
+    <div class="cert-fields" id="certFields">
+      <div class="grid">
+        <div><label for="certTitle">Certificate title</label><input type="text" id="certTitle" value="Certificate of Participation"></div>
+        <div><label for="issuedBy">Issued by</label><input type="text" id="issuedBy" value="SIDTM, Symbiosis International University"></div>
+      </div>
+      <div class="grid">
+        <div><label for="authorizedSignatory">Authorized signatory</label><input type="text" id="authorizedSignatory" value="Dr. Natraj N. A."></div>
+        <div>
+          <label for="gatingRule">Gating rule</label>
+          <select id="gatingRule"><option value="none">None &mdash; anyone who reaches the results screen</option><option value="quiz-score-threshold" selected>Quiz score threshold</option></select>
+        </div>
+      </div>
+      <div id="thresholdField"><label for="passThreshold">Pass threshold (out of 10)</label><input type="number" id="passThreshold" min="0" max="10" value="6"></div>
+    </div>
+  </div>
+
+  <div class="step">
+    <h2><span class="step-num">2</span>Generate the content prompt</h2>
+    <p class="hint">Builds a prompt that embeds the live <code>content.schema.json</code> and the SSS voice rules, ready to paste into Claude, ChatGPT, or any LLM of your choice.</p>
+    <button id="genPromptBtn">Generate Prompt</button>
+    <button id="copyPromptBtn" class="secondary" disabled>Copy to Clipboard</button>
+    <div id="promptStatus" class="status"></div>
+    <textarea id="promptOutput" readonly placeholder="Your generated prompt will appear here."></textarea>
+  </div>
+
+  <div class="step">
+    <h2><span class="step-num">3</span>Paste the LLM's response</h2>
+    <p class="hint">Paste the JSON the LLM returned. Nothing here leaves your browser.</p>
+    <textarea id="contentInput" placeholder="Paste content.json here"></textarea>
+    <button id="validateBtn">Validate</button>
+    <div id="validateResult"></div>
+  </div>
+
+  <div class="step">
+    <h2><span class="step-num">4</span>Preview &amp; download</h2>
+    <p class="hint">Only enabled once validation passes. Fetches <code>engine.template.html</code> and merges it with your content client-side &mdash; the same operation <code>build.py</code> does, done in the browser instead.</p>
+    <button id="buildBtn" disabled>Build Deck</button>
+    <button id="downloadBtn" class="secondary" disabled>Download Deck (.html)</button>
+    <div id="buildStatus" class="status"></div>
+    <iframe id="previewFrame" style="display:none;"></iframe>
+  </div>
+
+  <footer style="text-align:center;padding:24px 0 8px;color:var(--muted);font-size:0.85rem;">
+    Created by Dr. Natraj N. A. &mdash; SIDTM, Symbiosis International University
+  </footer>
+</div>
+
+<script>
+const THEME_PALETTES = {
+  Academic:   { p1:'#D85A30', p2:'#534AB7', p3:'#0F6E56', p4:'#BA7517', p5:'#185FA5', p6:'#993556' },
+  Corporate:  { p1:'#C0392B', p2:'#2C3E7B', p3:'#16695C', p4:'#8A6D1B', p5:'#1B4F72', p6:'#6C3483' },
+  Dark:       { p1:'#E8734A', p2:'#7B68C4', p3:'#2CA58D', p4:'#D4A017', p5:'#3C82C4', p6:'#B8577B' },
+  Telecom:    { p1:'#D64545', p2:'#5B4FCF', p3:'#0E8C6B', p4:'#C98A1B', p5:'#1976D2', p6:'#A13F63' },
+  Blockchain: { p1:'#B54A3F', p2:'#6C5CE7', p3:'#00A896', p4:'#C9A227', p5:'#2874A6', p6:'#8E4585' }
+};
+const FONTS = { heading:'Playfair Display', body:'Inter', mono:'JetBrains Mono' };
+const PLACEHOLDER = '/*__SSS_CONTENT_JSON__*/ null';
+const SCHEMA_FILES = { mba: 'content.schema.json', engineering: 'content-engineering.schema.json' };
+const AUDIENCE_OPTIONS = {
+  mba: ['MBA', 'EMBA', 'Executive Education'],
+  engineering: ['Undergraduate Engineering', 'Graduate Engineering', 'Professional / Continuing Education']
+};
+
+function updateAudienceOptions(){
+  const domain = document.getElementById('domain').value;
+  document.getElementById('audience').innerHTML = AUDIENCE_OPTIONS[domain].map(a=>`<option>${a}</option>`).join('');
+}
+document.getElementById('domain').addEventListener('change', updateAudienceOptions);
+updateAudienceOptions();
+
+document.getElementById('certEnabled').addEventListener('change', (e)=>{
+  document.getElementById('certFields').classList.toggle('show', e.target.checked);
+});
+document.getElementById('gatingRule').addEventListener('change', (e)=>{
+  document.getElementById('thresholdField').style.display = e.target.value==='quiz-score-threshold' ? 'block' : 'none';
+});
+
+function collectMeta(){
+  return {
+    domain: document.getElementById('domain').value,
+    topic: document.getElementById('topic').value.trim(),
+    audience: document.getElementById('audience').value,
+    facultyName: document.getElementById('facultyName').value.trim(),
+    facultyTitle: document.getElementById('facultyTitle').value.trim(),
+    facultyEmail: document.getElementById('facultyEmail').value.trim(),
+    institution: document.getElementById('institution').value.trim(),
+    courseCode: document.getElementById('courseCode').value.trim(),
+    subjectName: document.getElementById('subjectName').value.trim(),
+    batch: document.getElementById('batch').value.trim(),
+    academicYear: document.getElementById('academicYear').value.trim(),
+    duration: document.getElementById('duration').value.trim(),
+    slideCountPreset: document.getElementById('slideCountPreset').value,
+    themeName: document.getElementById('theme').value,
+    certEnabled: document.getElementById('certEnabled').checked,
+    certTitle: document.getElementById('certTitle').value.trim(),
+    issuedBy: document.getElementById('issuedBy').value.trim(),
+    authorizedSignatory: document.getElementById('authorizedSignatory').value.trim(),
+    gatingRule: document.getElementById('gatingRule').value,
+    passThreshold: document.getElementById('passThreshold').value
+  };
+}
+
+function buildMbaPrompt(meta, schemaText, palette){
+  return `You are writing content for a 2-hour MBA/EMBA classroom slide deck using the SSS (Strategic Systems Simulation) framework.
+
+DECK DETAILS
+Topic: ${meta.topic}
+Audience: ${meta.audience}
+Faculty: ${meta.facultyName}, ${meta.facultyTitle}, ${meta.institution} (${meta.facultyEmail})
+Course code: ${meta.courseCode}   Subject: ${meta.subjectName}   Batch: ${meta.batch}   Academic year: ${meta.academicYear}
+Duration: ${meta.duration}   Slide count preset: ${meta.slideCountPreset}
+Theme: ${meta.themeName} -- use this exact palette in the "theme" object: ${JSON.stringify(palette)}
+Fonts: ${JSON.stringify(FONTS)}
+Certificate: ${meta.certEnabled ? `enabled, title "${meta.certTitle}", issued by "${meta.issuedBy}", signed by "${meta.authorizedSignatory}", gatingRule "${meta.gatingRule}"${meta.gatingRule==='quiz-score-threshold' ? `, passThreshold ${meta.passThreshold}` : ''}` : 'disabled (set certificate.enabled to false)'}
+
+VOICE AND WRITING RULES (non-negotiable)
+- Second person ("you", "your organization") wherever it sharpens the argument.
+- Every Part opens with a provocative question, a surprising statistic, or a real tension -- never a definition.
+- Vary sentence length deliberately -- mix punchy single-clause sentences with longer developed ones. Uniform sentence length reads as AI-generated.
+- Use a concrete business-life analogy before formalizing any technical concept.
+- Case studies must name a real, specific company, year, decision, and outcome -- never "a major bank" or "a leading retailer."
+- Every statistic must cite its source inline (e.g., "-- Gartner, 2024").
+- Every technical concept must link, on the same or next slide, to one of: a business implication, a market opportunity, or a strategic risk -- this goes in that slide's "bridging" field.
+- Never use: "In today's rapidly evolving landscape...", "It is important to note that...", "This section will explore...", "Let us delve into...", "In conclusion, it is clear that...", "X is a game-changer" without a specific quantified argument, or passive voice in headings.
+- No two consecutive slides (within the same Part) may share the same "type".
+
+STRUCTURE REQUIREMENTS
+- "parts" is an array of exactly 7 objects, partNumber 0 through 6, in order.
+- Part 0 has exactly one "title" slide.
+- Parts 1-6 each need exactly one "strategic-pause" slide as their closing synthesis, and a slide count within: Part 1 (4-5), Part 2 (5-6), Part 3 (5-6), Part 4 (5-6), Part 5 (4-5), Part 6 (3-4).
+- Across the whole deck: at least 2 "simulation" slides in Part 3, at least 1 in Part 4, at least 1 more somewhere in Parts 1/2/5/6, and at least 5 total. Each simulation's "simulationTemplate" must be one of: "network-growth", "before-after-toggle", "decision-tree", "data-story-reveal", "flow-reveal" (pick whichever fits the concept -- only "network-growth" and "before-after-toggle" render today, the rest show a labeled placeholder, which is fine).
+- "quiz" is an array of exactly 10 questions: 2 tagged to each of Part 1-4, 1 each to Part 5 and Part 6. Each needs "options" A-D and a "correctAnswer" in that set, plus a 2-3 sentence "explanation".
+
+OUTPUT FORMAT
+Return ONLY a single JSON object -- no markdown code fences, no commentary before or after -- that validates against this JSON Schema:
+
+${schemaText}
+`;
+}
+
+function buildEngineeringPrompt(meta, schemaText, palette){
+  return `You are writing content for a classroom slide deck using the SSS (Strategic Systems Simulation) framework, Software & Systems Engineering domain.
+
+DECK DETAILS
+Topic: ${meta.topic}
+Audience: ${meta.audience}
+Faculty: ${meta.facultyName}, ${meta.facultyTitle}, ${meta.institution} (${meta.facultyEmail})
+Course code: ${meta.courseCode}   Subject: ${meta.subjectName}   Batch: ${meta.batch}   Academic year: ${meta.academicYear}
+Duration: ${meta.duration}   Slide count preset: ${meta.slideCountPreset}
+Theme: ${meta.themeName} -- use this exact palette in the "theme" object: ${JSON.stringify(palette)}
+Fonts: ${JSON.stringify(FONTS)}
+Certificate: ${meta.certEnabled ? `enabled, title "${meta.certTitle}", issued by "${meta.issuedBy}", signed by "${meta.authorizedSignatory}", gatingRule "${meta.gatingRule}"${meta.gatingRule==='quiz-score-threshold' ? `, passThreshold ${meta.passThreshold}` : ''}` : 'disabled (set certificate.enabled to false)'}
+
+SCOPE
+General Software & Systems Engineering -- distributed systems, databases, networking, security, ML infrastructure, performance engineering. Explicitly NOT embedded systems, electrical, or mechanical engineering -- the slide-type menu and icon vocabulary below assume software/CS topics.
+
+VOICE AND WRITING RULES (non-negotiable)
+- Second person ("you", "your system", "your team") wherever it sharpens the argument.
+- Every Part opens with a real outage, a scaling wall, or a surprising benchmark result -- never a definition.
+- Vary sentence length deliberately -- mix punchy single-clause sentences with longer developed ones. Uniform sentence length reads as AI-generated.
+- Use a concrete physical-world analogy (traffic, plumbing, assembly lines, postal routing) before formalizing any technical concept.
+- Case studies must name a real, specific system or company, the year, the specific technical decision, and a MEASURED outcome -- latency numbers, uptime percentage, cost delta, requests/sec. Never "a large tech company improved their database."
+- Every statistic must cite its source inline (a paper, an engineering blog post with a date, a benchmark methodology, or an RFC).
+- Every technical concept must link, on the same or next slide, to one of: an implementation implication, a performance implication, a cost implication, or an architectural risk -- this goes in that slide's "bridging" field with the matching "kind".
+- Never use: "In today's rapidly evolving landscape...", "It is important to note that...", "This section will explore...", "Let us delve into...", "In conclusion, it is clear that...", "simply scale horizontally", "it can be shown that" without showing it, "obviously"/"trivially", or bare Big-O notation without explaining what n actually is.
+- No two consecutive slides (within the same Part) may share the same "type".
+
+STRUCTURE REQUIREMENTS
+- "parts" is an array of exactly 7 objects, partNumber 0 through 6, in order.
+- Part 0: one "title" slide.
+- Part 1 -- The Current Architecture & Its Limits (4-5 slides): open with a real outage or scaling wall.
+- Part 2 -- Introducing the New Technique (5-6 slides): core principles via a physical analogy before formalizing.
+- Part 3 -- The Architectural Shift (5-6 slides): how it works mechanically, simulation-heavy.
+- Part 4 -- Implementation Patterns & Real Systems (5-6 slides): named systems, measured outcomes.
+- Part 5 -- Failure Modes, Tradeoffs & Operational Risk (4-5 slides): what breaks, when this is the wrong choice, on-call burden.
+- Part 6 -- The Future & Engineering Roadmap Decisions (3-4 slides): close with a concrete "what would you design" scenario.
+- Each Part 1-6 needs exactly one "architecture-checkpoint" slide (NOT "strategic-pause" -- that type name belongs to the MBA domain only) as its closing synthesis.
+- Across the whole deck: at least 2 "simulation" slides in Part 3, at least 1 in Part 4, at least 1 more somewhere in Parts 1/2/5/6, and at least 5 total. "simulationTemplate" must be one of: "network-growth", "before-after-toggle", "decision-tree", "data-story-reveal", "flow-reveal" (only the first two actually render today; the rest show a labeled placeholder, which is fine).
+- Available slide types: statement, evidence, comparison-matrix, process-flow, case-study, simulation, architecture-checkpoint, data-story, framework-card, architecture-diagram, protocol-stack, algorithm-card, benchmark-card, mathematical-model.
+- "quiz" is an array of exactly 10 questions: 2 tagged to each of Part 1-4, 1 each to Part 5 and Part 6. Each needs "options" A-D and a "correctAnswer" in that set, plus a 2-3 sentence "explanation".
+
+OUTPUT FORMAT
+Return ONLY a single JSON object -- no markdown code fences, no commentary before or after -- that validates against this JSON Schema:
+
+${schemaText}
+`;
+}
+
+document.getElementById('genPromptBtn').addEventListener('click', async ()=>{
+  const statusEl = document.getElementById('promptStatus');
+  const meta = collectMeta();
+  if(!meta.topic){ statusEl.textContent = 'Enter a topic first.'; return; }
+  const schemaFile = SCHEMA_FILES[meta.domain];
+  statusEl.textContent = `Fetching ${schemaFile}...`;
+  let schemaText = '';
+  try{
+    const res = await fetch(schemaFile);
+    if(!res.ok) throw new Error('fetch failed: ' + res.status);
+    schemaText = await res.text();
+    statusEl.textContent = 'Schema loaded. Prompt generated below.';
+  }catch(e){
+    schemaText = `(Could not fetch ${schemaFile} -- this page must be served over http/https, not opened as a local file, and ${schemaFile} must sit in the same folder. Paste the schema in manually if needed.)`;
+    statusEl.textContent = `Warning: could not fetch ${schemaFile} (see note in the prompt). Serve this page over http/https from the same folder as the schema file.`;
+  }
+  const palette = THEME_PALETTES[meta.themeName];
+  const prompt = meta.domain === 'engineering'
+    ? buildEngineeringPrompt(meta, schemaText, palette)
+    : buildMbaPrompt(meta, schemaText, palette);
+  document.getElementById('promptOutput').value = prompt;
+  document.getElementById('copyPromptBtn').disabled = false;
+});
+
+document.getElementById('copyPromptBtn').addEventListener('click', async ()=>{
+  const ta = document.getElementById('promptOutput');
+  try{
+    await navigator.clipboard.writeText(ta.value);
+    document.getElementById('promptStatus').textContent = 'Copied to clipboard.';
+  }catch(e){
+    ta.select();
+    document.getElementById('promptStatus').textContent = 'Clipboard API unavailable -- text selected, copy manually (Ctrl/Cmd+C).';
+  }
+});
+
+function validateContent(content, domain){
+  const closingType = domain === 'engineering' ? 'architecture-checkpoint' : 'strategic-pause';
+  const errors = [];
+  if(!content || typeof content !== 'object') return ['Not a valid JSON object.'];
+  ['meta','theme','parts','quiz'].forEach(k=>{ if(!(k in content)) errors.push(`Missing top-level key: "${k}".`); });
+  if(errors.length) return errors;
+
+  if(content.theme){
+    const pal = content.theme.palette || {};
+    ['p1','p2','p3','p4','p5','p6'].forEach(k=>{
+      if(!/^#[0-9A-Fa-f]{6}$/.test(pal[k]||'')) errors.push(`theme.palette.${k} is missing or not a valid 6-digit hex color.`);
+    });
+  }
+
+  const parts = content.parts || [];
+  if(parts.length !== 7) errors.push(`Expected exactly 7 "parts" entries (0-6), found ${parts.length}.`);
+  const partRanges = {1:[4,5],2:[5,6],3:[5,6],4:[5,6],5:[4,5],6:[3,4]};
+  const simCounts = {1:0,2:0,3:0,4:0,5:0,6:0};
+
+  parts.forEach((part, idx)=>{
+    if(part.partNumber !== idx) errors.push(`parts[${idx}].partNumber should be ${idx}, found ${part.partNumber}.`);
+    const slides = part.slides || [];
+    if(part.partNumber === 0){
+      if(slides.length !== 1) errors.push('Part 0 must have exactly 1 title slide.');
+    } else if(partRanges[part.partNumber]){
+      const [min,max] = partRanges[part.partNumber];
+      if(slides.length < min || slides.length > max) errors.push(`Part ${part.partNumber} has ${slides.length} slides, expected ${min}-${max}.`);
+      const pauseCount = slides.filter(s=>s.type===closingType).length;
+      if(pauseCount !== 1) errors.push(`Part ${part.partNumber} has ${pauseCount} ${closingType} slide(s), expected exactly 1.`);
+      for(let i=1;i<slides.length;i++){
+        if(slides[i] && slides[i-1] && slides[i].type === slides[i-1].type){
+          errors.push(`Part ${part.partNumber}: slides ${i} and ${i+1} are both type "${slides[i].type}" (no two consecutive slides in a Part may share a type).`);
+        }
+      }
+      simCounts[part.partNumber] = slides.filter(s=>s.type==='simulation').length;
+    }
+  });
+
+  const totalSims = Object.values(simCounts).reduce((a,b)=>a+b,0);
+  if(simCounts[3] < 2) errors.push(`Part 3 has ${simCounts[3]} simulation slide(s), needs at least 2.`);
+  if(simCounts[4] < 1) errors.push(`Part 4 has ${simCounts[4]} simulation slide(s), needs at least 1.`);
+  const elsewhere = simCounts[1] + simCounts[2] + simCounts[5] + simCounts[6];
+  if(elsewhere < 1) errors.push(`Parts 1/2/5/6 combined have ${elsewhere} simulation slide(s), needs at least 1.`);
+  if(totalSims < 5) errors.push(`Deck has ${totalSims} total simulation slide(s), spec minimum is 5.`);
+
+  const quiz = content.quiz || [];
+  if(quiz.length !== 10) errors.push(`Expected exactly 10 quiz questions, found ${quiz.length}.`);
+  const partDist = {1:0,2:0,3:0,4:0,5:0,6:0};
+  quiz.forEach((q,i)=>{
+    if(!q.options || !['A','B','C','D'].every(L=>L in q.options)) errors.push(`quiz[${i}] must have "options" A, B, C, and D.`);
+    if(!['A','B','C','D'].includes(q.correctAnswer)) errors.push(`quiz[${i}].correctAnswer must be one of A/B/C/D.`);
+    if(q.part in partDist) partDist[q.part]++;
+    else errors.push(`quiz[${i}].part is "${q.part}", expected an integer 1-6.`);
+  });
+  const expectedDist = {1:2,2:2,3:2,4:2,5:1,6:1};
+  Object.keys(expectedDist).forEach(p=>{
+    if(partDist[p] !== expectedDist[p]) errors.push(`Quiz Part ${p} has ${partDist[p]} question(s), expected ${expectedDist[p]}.`);
+  });
+
+  if(content.certificate && content.certificate.gatingRule === 'quiz-score-threshold' && typeof content.certificate.passThreshold !== 'number'){
+    errors.push('certificate.gatingRule is "quiz-score-threshold" but certificate.passThreshold is missing or not a number.');
+  }
+
+  return errors;
+}
+
+let validatedContent = null;
+
+document.getElementById('validateBtn').addEventListener('click', ()=>{
+  const raw = document.getElementById('contentInput').value;
+  const resultEl = document.getElementById('validateResult');
+  let parsed;
+  try{
+    parsed = JSON.parse(raw);
+  }catch(e){
+    resultEl.innerHTML = `<div class="error-list">Not valid JSON: ${e.message}</div>`;
+    document.getElementById('buildBtn').disabled = true;
+    validatedContent = null;
+    return;
+  }
+  const errors = validateContent(parsed, document.getElementById('domain').value);
+  if(errors.length){
+    resultEl.innerHTML = `<div class="error-list"><strong>${errors.length} issue(s) found:</strong><ul>${errors.map(e=>`<li>${e}</li>`).join('')}</ul></div>`;
+    document.getElementById('buildBtn').disabled = true;
+    validatedContent = null;
+  } else {
+    const slideCount = parsed.parts.reduce((sum,p)=>sum+(p.slides||[]).length,0);
+    resultEl.innerHTML = `<div class="success-box">Structurally valid. ${slideCount} content slides, ${parsed.quiz.length} quiz questions. This checks structure, counts, and distribution -- not full JSON-Schema field-level validation (run <code>validate.py</code> locally with <code>jsonschema</code> installed for that). Ready to build.</div>`;
+    document.getElementById('buildBtn').disabled = false;
+    validatedContent = parsed;
+  }
+});
+
+document.getElementById('buildBtn').addEventListener('click', async ()=>{
+  const statusEl = document.getElementById('buildStatus');
+  if(!validatedContent){ statusEl.textContent = 'Validate your content first.'; return; }
+  statusEl.textContent = 'Fetching engine.template.html...';
+  try{
+    const res = await fetch('engine.template.html');
+    if(!res.ok) throw new Error('fetch failed: ' + res.status);
+    const templateText = await res.text();
+    if(!templateText.includes(PLACEHOLDER)){
+      statusEl.textContent = 'engine.template.html does not contain the expected placeholder -- it may have been edited incompatibly.';
+      return;
+    }
+    // Use a replacer function, not a string: String.replace() treats "$&", "$$" etc. in a
+    // string replacement specially even for a plain-string pattern, which would silently
+    // corrupt the merge if any content ever contained a literal "$&". A function return
+    // value is inserted verbatim with no special-pattern handling.
+    const jsonText = JSON.stringify(validatedContent);
+    const merged = templateText.replace(PLACEHOLDER, () => jsonText);
+    const frame = document.getElementById('previewFrame');
+    frame.style.display = 'block';
+    frame.srcdoc = merged;
+    window.__builtDeckHtml = merged;
+    document.getElementById('downloadBtn').disabled = false;
+    statusEl.textContent = 'Built. Preview below.';
+  }catch(e){
+    statusEl.textContent = 'Could not fetch engine.template.html -- this page must be served over http/https from the same folder as engine.template.html, not opened as a local file. Error: ' + e.message;
+  }
+});
+
+document.getElementById('downloadBtn').addEventListener('click', ()=>{
+  if(!window.__builtDeckHtml) return;
+  const meta = collectMeta();
+  const slug = (meta.topic || 'deck').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || 'deck';
+  const blob = new Blob([window.__builtDeckHtml], {type:'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `deck-${slug}.html`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+</script>
+</body>
+</html>

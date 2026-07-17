@@ -1,0 +1,434 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sss-mba-studio/content.schema.json",
+  "title": "SSS MBA Deck Content Schema",
+  "description": "Structural contract between an LLM/form (content author) and engine.html (renderer) for the SSS Master Prompt v3.1, MBA/EMBA domain only. This schema enforces STRUCTURE (required fields, allowed slide types, quiz distribution). It does NOT and cannot enforce PROSE QUALITY (banned phrases, sentence-length variety, whether Strategic Bridging text is actually substantive). Those require a separate lint pass over the generated strings. It also does not enforce the cross-part simulation distribution rule (>=2 in Part 3, >=1 in Part 4, >=1 elsewhere) or the 'no two consecutive slides of the same type' rule -- those are cross-array checks and are enforced by the companion validate.py script, not by this file alone.",
+  "type": "object",
+  "required": ["meta", "theme", "parts", "quiz"],
+  "additionalProperties": false,
+  "properties": {
+    "meta": { "$ref": "#/$defs/meta" },
+    "theme": { "$ref": "#/$defs/theme" },
+    "parts": { "$ref": "#/$defs/parts" },
+    "quiz": { "$ref": "#/$defs/quiz" },
+    "certificate": { "$ref": "#/$defs/certificate" }
+  },
+
+  "$defs": {
+
+    "meta": {
+      "type": "object",
+      "required": ["topic", "domain", "audience", "faculty", "duration", "slideCountPreset"],
+      "additionalProperties": false,
+      "properties": {
+        "topic": { "type": "string", "minLength": 3 },
+        "domain": { "const": "MBA" },
+        "audience": { "enum": ["MBA", "EMBA", "Executive Education"] },
+        "courseCode": { "type": "string" },
+        "subjectName": { "type": "string" },
+        "batch": { "type": "string" },
+        "academicYear": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2,4}$" },
+        "duration": { "type": "string", "examples": ["2 Hours"] },
+        "slideCountPreset": {
+          "description": "Locked to presets because the SSS framework is a fixed pedagogical structure, not an arbitrary slide count.",
+          "enum": [40, 50, 60]
+        },
+        "faculty": {
+          "type": "object",
+          "required": ["name", "institution", "email"],
+          "additionalProperties": false,
+          "properties": {
+            "name": { "type": "string" },
+            "title": { "type": "string", "examples": ["Assistant Professor (Grade-11), SIDTM"] },
+            "institution": { "type": "string" },
+            "email": { "type": "string", "format": "email" }
+          }
+        },
+        "createdDate": { "type": "string", "format": "date" }
+      }
+    },
+
+    "theme": {
+      "description": "Named theme supplying a predefined six-color Part-identity palette. Users pick a theme, never arbitrary primary/secondary/accent colors -- the six Part accents are semantically load-bearing (Section 5/6 of the master prompt tie exact colors to exact icons per Part) and must not be freely recolorable.",
+      "type": "object",
+      "required": ["name", "palette", "fonts"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "enum": ["Corporate", "Academic", "Dark", "Telecom", "Blockchain"] },
+        "palette": {
+          "type": "object",
+          "required": ["p1", "p2", "p3", "p4", "p5", "p6"],
+          "additionalProperties": false,
+          "properties": {
+            "p1": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+            "p2": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+            "p3": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+            "p4": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+            "p5": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+            "p6": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" }
+          }
+        },
+        "fonts": {
+          "type": "object",
+          "required": ["heading", "body", "mono"],
+          "additionalProperties": false,
+          "properties": {
+            "heading": { "enum": ["Playfair Display", "Merriweather", "Poppins", "Montserrat"] },
+            "body": { "enum": ["Inter", "Roboto", "Open Sans"] },
+            "mono": { "const": "JetBrains Mono" }
+          }
+        }
+      }
+    },
+
+    "parts": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "prefixItems": [
+        { "$ref": "#/$defs/part0" },
+        { "$ref": "#/$defs/partN", "properties": { "partNumber": { "const": 1 } } },
+        { "$ref": "#/$defs/partN", "properties": { "partNumber": { "const": 2 } } },
+        { "$ref": "#/$defs/partN", "properties": { "partNumber": { "const": 3 } } },
+        { "$ref": "#/$defs/partN", "properties": { "partNumber": { "const": 4 } } },
+        { "$ref": "#/$defs/partN", "properties": { "partNumber": { "const": 5 } } },
+        { "$ref": "#/$defs/partN", "properties": { "partNumber": { "const": 6 } } }
+      ],
+      "items": false
+    },
+
+    "part0": {
+      "type": "object",
+      "required": ["partNumber", "partName", "slides"],
+      "properties": {
+        "partNumber": { "const": 0 },
+        "partName": { "const": "Title" },
+        "slides": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": { "$ref": "#/$defs/titleSlide" }
+        }
+      }
+    },
+
+    "partN": {
+      "type": "object",
+      "required": ["partNumber", "partName", "accentRef", "icon", "opening", "slides"],
+      "properties": {
+        "partNumber": { "type": "integer", "minimum": 1, "maximum": 6 },
+        "partName": { "type": "string" },
+        "accentRef": { "enum": ["p1", "p2", "p3", "p4", "p5", "p6"] },
+        "icon": {
+          "description": "Fixed per Part per Section 5 of the master prompt -- not a free choice.",
+          "enum": ["icon-warning", "icon-idea", "icon-process", "icon-money", "icon-lock", "icon-globe"]
+        },
+        "opening": {
+          "description": "Every Part must open with a question, statistic, or tension -- never a definition.",
+          "type": "object",
+          "required": ["device", "text"],
+          "properties": {
+            "device": { "enum": ["question", "statistic", "tension"] },
+            "text": { "type": "string", "minLength": 10 }
+          }
+        },
+        "slides": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/slide" },
+          "contains": { "properties": { "type": { "const": "strategic-pause" } } },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "partNumber": { "const": 1 } } },
+          "then": { "properties": { "slides": { "minItems": 4, "maxItems": 5 } } }
+        },
+        {
+          "if": { "properties": { "partNumber": { "const": 2 } } },
+          "then": { "properties": { "slides": { "minItems": 5, "maxItems": 6 } } }
+        },
+        {
+          "if": { "properties": { "partNumber": { "const": 3 } } },
+          "then": { "properties": { "slides": { "minItems": 5, "maxItems": 6 } } }
+        },
+        {
+          "if": { "properties": { "partNumber": { "const": 4 } } },
+          "then": { "properties": { "slides": { "minItems": 5, "maxItems": 6 } } }
+        },
+        {
+          "if": { "properties": { "partNumber": { "const": 5 } } },
+          "then": { "properties": { "slides": { "minItems": 4, "maxItems": 5 } } }
+        },
+        {
+          "if": { "properties": { "partNumber": { "const": 6 } } },
+          "then": { "properties": { "slides": { "minItems": 3, "maxItems": 4 } } }
+        }
+      ]
+    },
+
+    "titleSlide": {
+      "type": "object",
+      "required": ["type", "topic", "faculty"],
+      "properties": {
+        "type": { "const": "title" },
+        "topic": { "type": "string" },
+        "faculty": { "type": "string" }
+      }
+    },
+
+    "bridging": {
+      "description": "Strategic Bridging per Section 2.4: every technical concept must link to a business implication, market opportunity, or strategic risk.",
+      "type": "object",
+      "required": ["kind", "text"],
+      "properties": {
+        "kind": { "enum": ["business-implication", "market-opportunity", "strategic-risk"] },
+        "text": { "type": "string", "minLength": 10 }
+      }
+    },
+
+    "slide": {
+      "type": "object",
+      "required": ["slideId", "type"],
+      "oneOf": [
+        { "$ref": "#/$defs/slideStatement" },
+        { "$ref": "#/$defs/slideEvidence" },
+        { "$ref": "#/$defs/slideComparisonMatrix" },
+        { "$ref": "#/$defs/slideProcessFlow" },
+        { "$ref": "#/$defs/slideCaseStudy" },
+        { "$ref": "#/$defs/slideSimulation" },
+        { "$ref": "#/$defs/slideStrategicPause" },
+        { "$ref": "#/$defs/slideDataStory" },
+        { "$ref": "#/$defs/slideFrameworkCard" }
+      ]
+    },
+
+    "slideStatement": {
+      "type": "object",
+      "required": ["slideId", "type", "headline", "subhead"],
+      "additionalProperties": false,
+      "properties": {
+        "slideId": { "type": "string" },
+        "type": { "const": "statement" },
+        "headline": { "type": "string" },
+        "subhead": { "type": "string" }
+      }
+    },
+
+    "slideEvidence": {
+      "type": "object",
+      "required": ["slideId", "type", "headline", "statistic", "source", "contextLines", "bridging"],
+      "additionalProperties": false,
+      "properties": {
+        "slideId": { "type": "string" },
+        "type": { "const": "evidence" },
+        "headline": { "type": "string" },
+        "statistic": {
+          "type": "object",
+          "required": ["value", "label"],
+          "properties": {
+            "value": { "type": "string" },
+            "unit": { "type": "string" },
+            "label": { "type": "string" }
+          }
+        },
+        "source": { "type": "string", "description": "e.g. 'Gartner, 2024' -- must be inline-citable" },
+        "contextLines": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "string" } },
+        "bridging": { "$ref": "#/$defs/bridging" }
+      }
+    },
+
+    "slideComparisonMatrix": {
+      "type": "object",
+      "required": ["slideId", "type", "headline", "columns", "rows", "bridging"],
+      "additionalProperties": false,
+      "properties": {
+        "slideId": { "type": "string" },
+        "type": { "const": "comparison-matrix" },
+        "headline": { "type": "string" },
+        "columns": { "type": "array", "minItems": 2, "maxItems": 3, "items": { "type": "string" } },
+        "rows": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": ["label", "values"],
+            "properties": {
+              "label": { "type": "string" },
+              "values": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "bridging": { "$ref": "#/$defs/bridging" }
+      }
+    },
+
+    "slideProcessFlow": {
+      "type": "object",
+      "required": ["slideId", "type", "headline", "steps", "bridging"],
+      "additionalProperties": false,
+      "properties": {
+        "slideId": { "type": "string" },
+        "type": { "const": "process-flow" },
+        "headline": { "type": "string" },
+        "steps": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "required": ["label", "description"],
+            "properties": {
+              "label": { "type": "string" },
+              "description": { "type": "string" },
+              "icon": { "enum": ["icon-risk", "icon-growth", "icon-network", "icon-data", "icon-lock", "icon-globe", "icon-people", "icon-process", "icon-money", "icon-time", "icon-idea", "icon-warning"] }
+            }
+          }
+        },
+        "bridging": { "$ref": "#/$defs/bridging" }
+      }
+    },
+
+    "slideCaseStudy": {
+      "type": "object",
+      "required": ["slideId", "type", "company", "year", "challenge", "decision", "outcome"],
+      "additionalProperties": false,
+      "properties": {
+        "slideId": { "type": "string" },
+        "type": { "const": "case-study" },
+        "company": { "type": "string", "description": "Must name a real, specific company -- no 'a major bank'." },
+        "year": { "type": "integer", "minimum": 1990, "maximum": 2030 },
+        "badgeInitials": { "type": "string", "maxLength": 3 },
+        "challenge": { "type": "string" },
+        "decision": { "type": "string" },
+        "outcome": { "type": "string" },
+        "bridging": { "$ref": "#/$defs/bridging" }
+      }
+    },
+
+    "slideSimulation": {
+      "type": "object",
+      "required": ["slideId", "type", "headline", "explanation", "simulationTemplate", "simulationData", "buttonLabel", "bridging"],
+      "additionalProperties": false,
+      "properties": {
+        "slideId": { "type": "string" },
+        "type": { "const": "simulation" },
+        "headline": { "type": "string" },
+        "explanation": { "type": "string", "description": "3-5 sentence plain-English explanation of what this demonstrates and why it matters to an MBA student." },
+        "simulationTemplate": {
+          "description": "References one of the pre-built, tested engine.html simulation components. Content authors choose a template + supply data -- they do not author bespoke SVG/JS per deck.",
+          "enum": ["flow-reveal", "before-after-toggle", "network-growth", "decision-tree", "data-story-reveal"]
+        },
+        "simulationData": {
+          "type": "object",
+          "description": "Shape depends on simulationTemplate; validated at render time by engine.html, not by this schema."
+        },
+        "buttonLabel": { "const": "Run Simulation" },
+        "bridging": { "$ref": "#/$defs/bridging" }
+      }
+    },
+
+    "slideStrategicPause": {
+      "type": "object",
+      "required": ["slideId", "type", "synthesisStatement", "reflectionQuestion", "actionImplication"],
+      "additionalProperties": false,
+      "properties": {
+        "slideId": { "type": "string" },
+        "type": { "const": "strategic-pause" },
+        "synthesisStatement": { "type": "string" },
+        "reflectionQuestion": { "type": "string" },
+        "actionImplication": { "type": "string", "description": "Must end on an implication for a leader, not a summary." }
+      }
+    },
+
+    "slideDataStory": {
+      "type": "object",
+      "required": ["slideId", "type", "headline", "chartType", "dataPoints", "source", "bridging"],
+      "additionalProperties": false,
+      "properties": {
+        "slideId": { "type": "string" },
+        "type": { "const": "data-story" },
+        "headline": { "type": "string" },
+        "chartType": { "enum": ["bar", "line", "area"] },
+        "dataPoints": { "type": "array", "minItems": 2, "items": { "type": "object", "required": ["label", "value"], "properties": { "label": { "type": "string" }, "value": { "type": "number" } } } },
+        "annotations": { "type": "array", "items": { "type": "string" } },
+        "source": { "type": "string" },
+        "bridging": { "$ref": "#/$defs/bridging" }
+      }
+    },
+
+    "slideFrameworkCard": {
+      "type": "object",
+      "required": ["slideId", "type", "headline", "frameworkName", "diagramLabels", "bridging"],
+      "additionalProperties": false,
+      "properties": {
+        "slideId": { "type": "string" },
+        "type": { "const": "framework-card" },
+        "headline": { "type": "string" },
+        "frameworkName": { "type": "string", "examples": ["SWOT", "BCG Matrix", "Porter's Five Forces"] },
+        "diagramLabels": { "type": "array", "items": { "type": "string" } },
+        "bridging": { "$ref": "#/$defs/bridging" }
+      }
+    },
+
+    "quiz": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "items": { "$ref": "#/$defs/quizQuestion" },
+      "allOf": [
+        { "contains": { "properties": { "part": { "const": 1 } } }, "minContains": 2, "maxContains": 2 },
+        { "contains": { "properties": { "part": { "const": 2 } } }, "minContains": 2, "maxContains": 2 },
+        { "contains": { "properties": { "part": { "const": 3 } } }, "minContains": 2, "maxContains": 2 },
+        { "contains": { "properties": { "part": { "const": 4 } } }, "minContains": 2, "maxContains": 2 },
+        { "contains": { "properties": { "part": { "const": 5 } } }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "properties": { "part": { "const": 6 } } }, "minContains": 1, "maxContains": 1 }
+      ]
+    },
+
+    "quizQuestion": {
+      "type": "object",
+      "required": ["questionId", "part", "questionText", "options", "correctAnswer", "explanation"],
+      "additionalProperties": false,
+      "properties": {
+        "questionId": { "type": "string" },
+        "part": { "type": "integer", "minimum": 1, "maximum": 6 },
+        "questionText": { "type": "string" },
+        "options": {
+          "type": "object",
+          "required": ["A", "B", "C", "D"],
+          "additionalProperties": false,
+          "properties": {
+            "A": { "type": "string" },
+            "B": { "type": "string" },
+            "C": { "type": "string" },
+            "D": { "type": "string" }
+          }
+        },
+        "correctAnswer": { "enum": ["A", "B", "C", "D"] },
+        "explanation": { "type": "string", "description": "2-3 sentences: why correct answer is right + common misconception." }
+      }
+    },
+
+    "certificate": {
+      "type": "object",
+      "required": ["enabled"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "title": { "type": "string", "default": "Certificate of Participation" },
+        "issuedBy": { "type": "string" },
+        "authorizedSignatory": { "type": "string" },
+        "gatingRule": {
+          "description": "Undefined in the source master prompt -- must be decided before build. 'none' issues to anyone who reaches the results slide; 'quiz-score-threshold' requires passThreshold.",
+          "enum": ["none", "quiz-score-threshold"],
+          "default": "none"
+        },
+        "passThreshold": { "type": "integer", "minimum": 0, "maximum": 10 }
+      },
+      "if": { "properties": { "gatingRule": { "const": "quiz-score-threshold" } } },
+      "then": { "required": ["passThreshold"] }
+    }
+  }
+}

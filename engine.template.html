@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SSS Deck</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap');
+
+:root{
+  --bg-color:#FFFFFF; --surface-color:#F8F9FA; --text-main:#1A1A2E; --text-muted:#666680;
+  --border-color:#E2E4EA;
+  --color-p1:#D85A30; --color-p2:#534AB7; --color-p3:#0F6E56; --color-p4:#BA7517; --color-p5:#185FA5; --color-p6:#993556;
+  --nav-height:56px; --radius:12px; --shadow:0 2px 16px rgba(0,0,0,0.08);
+}
+[data-theme="dark"]{
+  --bg-color:#0F1117; --surface-color:#1A1D27; --text-main:#E8E8EC; --text-muted:#9090A8; --border-color:#2E3045;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; background:var(--bg-color); color:var(--text-main);
+  font-family:'Inter',sans-serif; font-size:1rem; line-height:1.7;
+  transition:background-color 300ms ease, color 300ms ease;
+  overflow:hidden; height:100vh;
+}
+h1,h2,h3{font-family:'Playfair Display',serif; font-weight:700;}
+h1{font-size:2.4rem;line-height:1.2;} h2{font-size:1.8rem;line-height:1.3;}
+h3{font-family:'Inter',sans-serif;font-weight:600;font-size:1.2rem;line-height:1.4;}
+.caption{font-family:'Inter',sans-serif;font-size:0.8rem;color:var(--text-muted);}
+.mono{font-family:'JetBrains Mono',monospace;font-size:13px;}
+button{font-family:inherit;cursor:pointer;}
+:focus-visible{box-shadow:0 0 0 3px rgba(0,95,204,0.5); outline:none;}
+
+.icon-registry{position:absolute;width:0;height:0;overflow:hidden;}
+
+.progress-bar{position:fixed;top:0;left:0;height:4px;background:var(--border-color);width:100%;z-index:50;}
+.progress-fill{height:100%;width:0%;transition:width 280ms ease;background:var(--color-p1);}
+
+.top-bar{
+  position:fixed;top:4px;left:0;right:0;height:var(--nav-height);
+  background:var(--surface-color);border-bottom:1px solid var(--border-color);
+  display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:49;
+}
+.slide-counter{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text-muted);}
+.top-bar-actions{display:flex;gap:8px;}
+.icon-btn{
+  width:36px;height:36px;border-radius:8px;border:1px solid var(--border-color);
+  background:var(--bg-color);color:var(--text-main);display:flex;align-items:center;justify-content:center;
+}
+.icon-btn:hover{background:var(--border-color);}
+
+#deck{position:absolute;top:60px;left:0;right:0;bottom:0;overflow:hidden;}
+.slide{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  padding:48px 64px;opacity:0;pointer-events:none;overflow-y:auto;
+  transition:opacity 280ms ease, transform 280ms cubic-bezier(0,0,0.2,1);
+  will-change:transform,opacity;
+}
+.slide.active{opacity:1;pointer-events:all;transform:none;}
+.slide.exit-left{opacity:0;transform:translateX(-24px);}
+.slide.exit-right{opacity:0;transform:translateX(24px);}
+.slide.enter-left{transform:translateX(-24px);}
+.slide.enter-right{transform:translateX(24px);}
+.slide.sim-fade{transition:opacity 400ms ease;}
+.slide.sim-fade.exit-left,.slide.sim-fade.exit-right,.slide.sim-fade.enter-left,.slide.sim-fade.enter-right{transform:none;}
+.slide.part-boundary.exit-left,.slide.part-boundary.exit-right{transform:scale(0.97);}
+
+.part-badge{position:absolute;top:16px;right:20px;width:16px;height:16px;opacity:0.4;}
+
+.part-opening{
+  font-family:'Playfair Display',serif;font-size:1.3rem;font-style:italic;
+  padding:16px 20px;border-left:4px solid currentColor;margin-bottom:24px;max-width:70ch;
+}
+
+.slide-statement h1{max-width:16ch;}
+.slide-statement .subhead{font-size:1.3rem;color:var(--text-muted);max-width:50ch;}
+
+.evidence-stat{font-family:'JetBrains Mono',monospace;font-size:4rem;font-weight:400;margin:8px 0;}
+.evidence-source{font-size:0.8rem;color:var(--text-muted);margin-bottom:16px;}
+
+table.comparison{border-collapse:collapse;width:100%;max-width:900px;}
+table.comparison th,table.comparison td{border:1px solid var(--border-color);padding:10px 14px;text-align:left;}
+table.comparison th{background:var(--surface-color);}
+
+.process-steps{display:flex;gap:16px;flex-wrap:wrap;margin-top:24px;}
+.process-step{flex:1;min-width:180px;border:1px solid var(--border-color);border-radius:var(--radius);padding:16px;background:var(--surface-color);}
+.process-step .step-num{font-family:'JetBrains Mono',monospace;color:var(--text-muted);font-size:0.8rem;}
+
+.case-card{display:flex;gap:24px;align-items:flex-start;margin-top:16px;}
+.badge{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-family:'Playfair Display',serif;font-weight:700;font-size:1.2rem;color:#fff;flex-shrink:0;}
+.case-fields dt{font-weight:600;margin-top:12px;} .case-fields dd{margin:0 0 0 0;color:var(--text-main);}
+
+.sim-layout{display:flex;gap:32px;margin-top:16px;}
+.sim-explain{flex:0 0 38%;}
+.sim-stage{flex:1;border:1px solid var(--border-color);border-radius:var(--radius);background:var(--surface-color);display:flex;align-items:center;justify-content:center;min-height:340px;}
+.btn-sim{min-width:180px;min-height:44px;padding:10px 20px;border-radius:8px;border:none;background:var(--color-p3);color:#fff;font-weight:600;margin-top:16px;}
+.sim-stub{color:var(--text-muted);font-style:italic;padding:24px;text-align:center;}
+
+.bridging{margin-top:20px;padding:12px 16px;border-radius:var(--radius);background:var(--surface-color);border:1px solid var(--border-color);font-size:0.95rem;}
+.bridging .kind{font-family:'JetBrains Mono',monospace;font-size:0.75rem;text-transform:uppercase;color:var(--text-muted);}
+
+.strategic-pause{max-width:900px;}
+.sp-block{margin-bottom:20px;}
+.sp-label{font-family:'JetBrains Mono',monospace;font-size:0.75rem;text-transform:uppercase;color:var(--text-muted);}
+
+.framework-labels{list-style:none;padding:0;margin-top:16px;}
+.framework-labels li{padding:8px 0;border-bottom:1px solid var(--border-color);}
+
+.data-story-chart{display:flex;align-items:flex-end;gap:16px;height:220px;margin-top:24px;border-bottom:2px solid var(--border-color);padding-bottom:0;}
+.bar-wrap{display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;}
+.bar{width:60%;background:var(--color-p3);border-radius:4px 4px 0 0;transition:height 600ms ease;}
+.bar-label{font-size:0.75rem;color:var(--text-muted);margin-top:6px;text-align:center;}
+
+.title-slide{display:flex;flex-direction:column;justify-content:center;height:100%;}
+
+.bottom-nav{position:fixed;bottom:20px;right:20px;display:flex;gap:12px;z-index:49;}
+.nav-circle{width:48px;height:48px;border-radius:50%;border:1px solid var(--border-color);
+  background:var(--surface-color);color:var(--text-main);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);}
+
+.quiz-start,.quiz-results{max-width:700px;}
+.btn-primary{min-height:44px;padding:10px 24px;border-radius:8px;border:none;background:var(--color-p3);color:#fff;font-weight:600;margin-top:16px;}
+.quiz-options{display:flex;flex-direction:column;gap:10px;margin-top:20px;max-width:700px;}
+.quiz-option{min-height:44px;text-align:left;padding:12px 16px;border-radius:8px;border:1px solid var(--border-color);background:var(--surface-color);color:var(--text-main);}
+.quiz-option.correct{border-color:#1a7f37;background:rgba(26,127,55,0.12);}
+.quiz-option.incorrect{border-color:#c62828;background:rgba(198,40,40,0.12);}
+.quiz-option.locked{cursor:default;}
+.quiz-explanation{margin-top:16px;padding:12px 16px;border-radius:8px;background:var(--surface-color);border:1px solid var(--border-color);max-width:700px;}
+.quiz-progress{margin-bottom:4px;display:block;}
+.score-display{font-family:'JetBrains Mono',monospace;font-size:3rem;}
+.part-breakdown{display:flex;gap:12px;flex-wrap:wrap;margin:20px 0;}
+.pb-cell{border:1px solid var(--border-color);border-radius:8px;padding:10px 14px;text-align:center;min-width:80px;}
+.pb-label{font-size:0.75rem;color:var(--text-muted);}
+.pb-score{font-family:'JetBrains Mono',monospace;font-size:1.1rem;}
+.weakest-callout{margin:16px 0;padding:12px 16px;border-radius:8px;background:var(--surface-color);border:1px solid var(--border-color);}
+.link-btn{background:none;border:none;color:var(--color-p5);text-decoration:underline;padding:0;font-size:inherit;}
+
+.arch-components{display:flex;flex-wrap:wrap;gap:16px;margin-top:24px;}
+.arch-component{flex:1;min-width:160px;border:2px solid var(--border-color);border-radius:var(--radius);padding:16px;background:var(--surface-color);}
+.protocol-stack{display:flex;flex-direction:column;gap:2px;margin-top:20px;max-width:600px;}
+.stack-layer{border:1px solid var(--border-color);padding:12px 16px;background:var(--surface-color);}
+.layer-num{font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--text-muted);margin-right:8px;}
+.algo-steps{font-family:'JetBrains Mono',monospace;font-size:0.9rem;line-height:1.8;margin-top:16px;padding-left:24px;}
+.complexity-badge{margin-top:16px;padding:12px 16px;border-radius:8px;background:var(--surface-color);border:1px solid var(--border-color);display:inline-block;}
+.benchmark-results{display:flex;gap:16px;flex-wrap:wrap;margin:16px 0;}
+.bench-cell{border:1px solid var(--border-color);border-radius:8px;padding:12px 16px;min-width:120px;}
+.bench-label{font-size:0.8rem;color:var(--text-muted);}
+.bench-value{font-family:'JetBrains Mono',monospace;font-size:1.3rem;}
+.formula-display{font-family:'JetBrains Mono',monospace;font-size:1.6rem;padding:24px;background:var(--surface-color);border-radius:var(--radius);border:1px solid var(--border-color);margin:16px 0;text-align:center;}
+.variable-list dt{font-family:'JetBrains Mono',monospace;font-weight:600;margin-top:8px;}
+.variable-list dd{margin:0 0 0 16px;color:var(--text-muted);}
+
+@media print{
+  .top-bar,.progress-bar,.bottom-nav{display:none !important;}
+  #deck{position:static;overflow:visible;top:0;}
+  .slide{position:relative !important;opacity:1 !important;transform:none !important;pointer-events:all !important;
+    page-break-after:always;width:100% !important;height:auto !important;min-height:148mm;padding:12mm;overflow:visible;}
+  svg{break-inside:avoid;}
+  *{animation:none !important;transition:none !important;}
+  @page{size:A4 landscape;margin:10mm;}
+}
+@media (prefers-reduced-motion: reduce){
+  .slide{transition-duration:0ms !important;}
+  *{animation:none !important;}
+}
+</style>
+</head>
+<body data-theme="light">
+
+<svg class="icon-registry" aria-hidden="true">
+<defs>
+<symbol id="icon-risk" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z M12 9v4 M12 16h.01"/></symbol>
+<symbol id="icon-growth" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M3 17l6-6 4 4 8-8 M15 7h6v6"/></symbol>
+<symbol id="icon-network" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M12 4a2 2 0 100 4 2 2 0 000-4z M5 18a2 2 0 100 4 2 2 0 000-4z M19 18a2 2 0 100 4 2 2 0 000-4z M12 8l-5.5 9 M12 8l5.5 9 M7 19h10"/></symbol>
+<symbol id="icon-data" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3z M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6 M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+<symbol id="icon-lock" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M6 11V8a6 6 0 0112 0v3 M5 11h14v9H5z M12 15v2"/></symbol>
+<symbol id="icon-globe" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M12 3a9 9 0 100 18 9 9 0 000-18z M3 12h18 M12 3c2.5 2.5 3.5 5.8 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.8-3.5-9s1-6.5 3.5-9z"/></symbol>
+<symbol id="icon-people" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M9 11a3 3 0 100-6 3 3 0 000 6z M3 20c0-3 2.5-5 6-5s6 2 6 5 M16 8a3 3 0 110-6 M15 14c2.8.3 5 2.3 5 6"/></symbol>
+<symbol id="icon-process" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M3 6h13 M3 12h13 M3 18h13 M18 15l4 3-4 3"/></symbol>
+<symbol id="icon-money" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M12 3a9 9 0 100 18 9 9 0 000-18z M9 8h4a2 2 0 010 4H9h4a2 2 0 010 4H9 M10 6v12"/></symbol>
+<symbol id="icon-time" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M12 3a9 9 0 100 18 9 9 0 000-18z M12 7v5l4 2"/></symbol>
+<symbol id="icon-idea" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M9 18h6 M10 21h4 M8 11a4 4 0 118 0c0 2-1.5 2.8-2 4-.2.6-.3 1-.3 1H10.3s-.1-.4-.3-1c-.5-1.2-2-2-2-4z"/></symbol>
+<symbol id="icon-warning" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M12 4l9 16H3L12 4z M12 10v4 M12 17h.01"/></symbol>
+</defs>
+</svg>
+
+<div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+<div class="top-bar">
+  <div class="slide-counter" id="slideCounter" aria-live="polite">Slide 1 / 1</div>
+  <div class="top-bar-actions">
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle dark mode"><svg width="18" height="18"><use href="#icon-idea"/></svg></button>
+    <button class="icon-btn" id="printBtn" aria-label="Print or export PDF"><svg width="18" height="18"><use href="#icon-data"/></svg></button>
+    <button class="icon-btn" id="fullscreenBtn" aria-label="Toggle fullscreen"><svg width="18" height="18"><use href="#icon-globe"/></svg></button>
+  </div>
+</div>
+
+<div id="deck"></div>
+
+<div class="bottom-nav">
+  <button class="nav-circle" id="prevBtn" aria-label="Previous slide">&#8592;</button>
+  <button class="nav-circle" id="nextBtn" aria-label="Next slide">&#8594;</button>
+</div>
+
+<script>
+const SSS_CONTENT = /*__SSS_CONTENT_JSON__*/ null;
+
+const professionalColors = ['#003f5c','#4d648d','#2f4b7c','#665191','#a05195','#d45087','#f95d6a','#ff7c43','#ffa600'];
+const QUIZ_STORAGE_KEY = 'sss_quiz_attempts';
+const PART_MAX = {1:2,2:2,3:2,4:2,5:1,6:1};
+
+let screens = [];   // flattened {partNumber, partName, accentRef, icon, opening, isFirstInPart, slide}
+let current = 0;
+let quizState = null; // {order, idx, answers, score, partScore}
+
+function escapeHtml(str){
+  if(str===undefined || str===null) return '';
+  return String(str).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function buildScreens(content){
+  const out = [];
+  content.parts.forEach(part=>{
+    part.slides.forEach(slide=>{
+      out.push({
+        partNumber: part.partNumber,
+        partName: part.partName,
+        accentRef: part.accentRef || null,
+        icon: part.icon || null,
+        opening: part.opening || null,
+        isFirstInPart: part.slides[0] === slide,
+        slide
+      });
+    });
+  });
+  out.push({partNumber:7, partName:'Assessment', accentRef:null, icon:null, opening:null, isFirstInPart:false, slide:{type:'quiz-start'}});
+  out.push({partNumber:7, partName:'Assessment', accentRef:null, icon:null, opening:null, isFirstInPart:false, slide:{type:'quiz-container'}});
+  out.push({partNumber:7, partName:'Assessment', accentRef:null, icon:null, opening:null, isFirstInPart:false, slide:{type:'quiz-results'}});
+  return out;
+}
+
+function applyTheme(theme){
+  const root = document.documentElement;
+  root.style.setProperty('--color-p1', theme.palette.p1);
+  root.style.setProperty('--color-p2', theme.palette.p2);
+  root.style.setProperty('--color-p3', theme.palette.p3);
+  root.style.setProperty('--color-p4', theme.palette.p4);
+  root.style.setProperty('--color-p5', theme.palette.p5);
+  root.style.setProperty('--color-p6', theme.palette.p6);
+}
+
+function bridgingBlock(b){
+  if(!b) return '';
+  const labels = {'business-implication':'Business implication','market-opportunity':'Market opportunity','strategic-risk':'Strategic risk'};
+  return `<div class="bridging"><div class="kind">${labels[b.kind]||b.kind}</div>${escapeHtml(b.text)}</div>`;
+}
+
+function renderSlideBody(screen){
+  const s = screen.slide;
+  const openingHtml = screen.isFirstInPart && screen.opening
+    ? `<div class="part-opening" style="color:var(--color-${screen.accentRef})">${escapeHtml(screen.opening.text)}</div>` : '';
+
+  switch(s.type){
+    case 'title':
+      return `<div class="title-slide"><h1>${escapeHtml(s.topic)}</h1><p class="caption">${escapeHtml(s.faculty)}</p></div>`;
+
+    case 'statement':
+      return `${openingHtml}<div class="slide-statement"><h1>${escapeHtml(s.headline)}</h1><p class="subhead">${escapeHtml(s.subhead)}</p></div>`;
+
+    case 'evidence':
+      return `${openingHtml}<h2>${escapeHtml(s.headline)}</h2>
+        <div class="evidence-stat">${escapeHtml(s.statistic.value)}${escapeHtml(s.statistic.unit||'')}</div>
+        <p>${escapeHtml(s.statistic.label)}</p>
+        <p class="evidence-source">&mdash; ${escapeHtml(s.source)}</p>
+        ${s.contextLines.map(l=>`<p>${escapeHtml(l)}</p>`).join('')}
+        ${bridgingBlock(s.bridging)}`;
+
+    case 'comparison-matrix':
+      return `${openingHtml}<h2>${escapeHtml(s.headline)}</h2>
+        <table class="comparison"><thead><tr>${s.columns.map(c=>`<th>${escapeHtml(c)}</th>`).join('')}</tr></thead>
+        <tbody>${s.rows.map(r=>`<tr><td>${escapeHtml(r.label)}</td>${r.values.map(v=>`<td>${escapeHtml(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>
+        ${bridgingBlock(s.bridging)}`;
+
+    case 'process-flow':
+      return `${openingHtml}<h2>${escapeHtml(s.headline)}</h2>
+        <div class="process-steps">${s.steps.map((st,i)=>`
+          <div class="process-step">
+            <div class="step-num">STEP ${i+1}</div>
+            <span style="display:flex;align-items:center;gap:8px;margin:6px 0;">
+              ${st.icon?`<svg width="20" height="20"><use href="#${st.icon}"/></svg>`:''}<strong>${escapeHtml(st.label)}</strong>
+            </span>
+            <p class="caption">${escapeHtml(st.description)}</p>
+          </div>`).join('')}</div>
+        ${bridgingBlock(s.bridging)}`;
+
+    case 'case-study':
+      return `${openingHtml}<h2>${escapeHtml(s.company)}${s.year?` (${s.year})`:''}</h2>
+        <div class="case-card">
+          <div class="badge" style="background:var(--color-${screen.accentRef})">${escapeHtml(s.badgeInitials||s.company.slice(0,2).toUpperCase())}</div>
+          <dl class="case-fields">
+            <dt>Challenge</dt><dd>${escapeHtml(s.challenge)}</dd>
+            <dt>Decision</dt><dd>${escapeHtml(s.decision)}</dd>
+            <dt>Outcome</dt><dd>${escapeHtml(s.outcome)}</dd>
+          </dl>
+        </div>
+        ${bridgingBlock(s.bridging)}`;
+
+    case 'simulation':
+      return `${openingHtml}<h2>${escapeHtml(s.headline)}</h2>
+        <div class="sim-layout">
+          <div class="sim-explain">
+            <p>${escapeHtml(s.explanation)}</p>
+            <button class="btn-sim" data-sim="${s.simulationTemplate}" data-slide="${s.slideId}" aria-label="${escapeHtml(s.buttonLabel)}">${escapeHtml(s.buttonLabel)}</button>
+          </div>
+          <div class="sim-stage" id="stage-${s.slideId}">
+            ${s.simulationTemplate==='network-growth' ? renderNetworkGrowthSvg(s)
+              : s.simulationTemplate==='before-after-toggle' ? renderBeforeAfterSvg(s)
+              : `<div class="sim-stub">Simulation template &ldquo;${escapeHtml(s.simulationTemplate)}&rdquo; not yet implemented in engine.template.html.<br>Explanation and data are wired up; rendering is pending.</div>`}
+          </div>
+        </div>
+        ${bridgingBlock(s.bridging)}`;
+
+    case 'strategic-pause':
+      return `<div class="strategic-pause">
+        <div class="sp-block"><div class="sp-label">Synthesis</div><h2>${escapeHtml(s.synthesisStatement)}</h2></div>
+        <div class="sp-block"><div class="sp-label">Reflect</div><p>${escapeHtml(s.reflectionQuestion)}</p></div>
+        <div class="sp-block"><div class="sp-label">Action for a leader</div><p><strong>${escapeHtml(s.actionImplication)}</strong></p></div>
+      </div>`;
+
+    case 'architecture-checkpoint':
+      // Engineering-domain rename of strategic-pause (SSS-Engineering-Spec-DRAFT.md v0.2, Decision 2).
+      // Same shape and CSS classes, different closing label.
+      return `<div class="strategic-pause">
+        <div class="sp-block"><div class="sp-label">Synthesis</div><h2>${escapeHtml(s.synthesisStatement)}</h2></div>
+        <div class="sp-block"><div class="sp-label">Reflect</div><p>${escapeHtml(s.reflectionQuestion)}</p></div>
+        <div class="sp-block"><div class="sp-label">Action for an engineer</div><p><strong>${escapeHtml(s.actionImplication)}</strong></p></div>
+      </div>`;
+
+    case 'architecture-diagram':
+      return `${openingHtml}<h2>${escapeHtml(s.headline)}</h2>
+        <div class="arch-components">${s.components.map(c=>`
+          <div class="arch-component"><strong>${escapeHtml(c.label)}</strong>${c.description?`<p class="caption">${escapeHtml(c.description)}</p>`:''}</div>`).join('')}</div>
+        ${bridgingBlock(s.bridging)}`;
+
+    case 'protocol-stack':
+      return `${openingHtml}<h2>${escapeHtml(s.headline)}</h2>
+        <div class="protocol-stack">${s.layers.map((l,i)=>`
+          <div class="stack-layer"><span class="layer-num">LAYER ${i+1}</span><strong>${escapeHtml(l.label)}</strong><p class="caption">${escapeHtml(l.description)}</p></div>`).join('')}</div>
+        ${bridgingBlock(s.bridging)}`;
+
+    case 'algorithm-card':
+      return `${openingHtml}<h2>${escapeHtml(s.headline)}</h2>
+        <ol class="algo-steps">${s.steps.map(step=>`<li>${escapeHtml(step)}</li>`).join('')}</ol>
+        <div class="complexity-badge"><span class="mono">${escapeHtml(s.complexity)}</span><p class="caption">${escapeHtml(s.complexityExplanation)}</p></div>
+        ${bridgingBlock(s.bridging)}`;
+
+    case 'benchmark-card':
+      return `${openingHtml}<h2>${escapeHtml(s.headline)}</h2>
+        <p class="caption">${escapeHtml(s.methodology)}</p>
+        <div class="benchmark-results">${s.results.map(r=>`
+          <div class="bench-cell"><div class="bench-label">${escapeHtml(r.label)}</div><div class="bench-value">${escapeHtml(r.value)}${r.unit?` <span class="caption">${escapeHtml(r.unit)}</span>`:''}</div></div>`).join('')}</div>
+        <p class="evidence-source">&mdash; ${escapeHtml(s.source)}</p>
+        ${bridgingBlock(s.bridging)}`;
+
+    case 'mathematical-model':
+      return `${openingHtml}<h2>${escapeHtml(s.headline)}</h2>
+        <div class="formula-display">${escapeHtml(s.formula)}</div>
+        <dl class="variable-list">${s.variables.map(v=>`<dt>${escapeHtml(v.symbol)}</dt><dd>${escapeHtml(v.meaning)}</dd>`).join('')}</dl>
+        ${bridgingBlock(s.bridging)}`;
+
+    case 'data-story': {
+      const max = Math.max(...s.dataPoints.map(d=>d.value), 1);
+      return `${openingHtml}<h2>${escapeHtml(s.headline)}</h2>
+        <div class="data-story-chart">${s.dataPoints.map(d=>`
+          <div class="bar-wrap"><div class="bar" style="height:${(d.value/max*100).toFixed(1)}%"></div>
+          <div class="bar-label">${escapeHtml(d.label)}</div></div>`).join('')}</div>
+        <p class="caption">${(s.annotations||[]).map(escapeHtml).join(' &middot; ')} &mdash; ${escapeHtml(s.source)}</p>
+        ${bridgingBlock(s.bridging)}`;
+    }
+
+    case 'framework-card':
+      return `${openingHtml}<h2>${escapeHtml(s.headline)}</h2><h3>${escapeHtml(s.frameworkName)}</h3>
+        <ul class="framework-labels">${s.diagramLabels.map(l=>`<li>${escapeHtml(l)}</li>`).join('')}</ul>
+        ${bridgingBlock(s.bridging)}`;
+
+    case 'quiz-start':
+      return renderQuizStartHtml();
+
+    case 'quiz-container':
+      return `<div class="quiz-container"><div id="quizBody"></div></div>`;
+
+    case 'quiz-results':
+      return `<div class="quiz-results"><h2>Results</h2><div id="resultsBody"></div></div>`;
+
+    default:
+      return `<p>Unknown slide type: ${escapeHtml(s.type)}</p>`;
+  }
+}
+
+function renderNetworkGrowthSvg(s){
+  const labels = (s.simulationData && s.simulationData.nodeLabels) || ['A','B','C'];
+  return `<svg viewBox="0 0 600 400" preserveAspectRatio="xMidYMid meet" role="img" id="svg-${s.slideId}">
+    <title>Network propagation simulation</title>
+    <desc>Nodes light up in sequence as a ledger update propagates across the network.</desc>
+    <g id="lines-${s.slideId}"></g>
+    <g id="nodes-${s.slideId}"></g>
+  </svg>`;
+}
+
+// --- Network-growth simulation: real rAF-driven animation, per Section 9 rules ---
+const simState = {}; // slideId -> {running, raf, step, total, startTime}
+
+function initNetworkSim(slideId, labels){
+  const svg = document.getElementById(`svg-${slideId}`);
+  if(!svg) return;
+  const nodesG = document.getElementById(`nodes-${slideId}`);
+  const linesG = document.getElementById(`lines-${slideId}`);
+  nodesG.innerHTML = ''; linesG.innerHTML = '';
+  const n = labels.length;
+  const cx = 300, cy = 200, r = 130;
+  const coords = labels.map((_,i)=>{
+    const angle = (i/n)*Math.PI*2 - Math.PI/2;
+    return {x: cx + r*Math.cos(angle), y: cy + r*Math.sin(angle)};
+  });
+  coords.forEach((c,i)=>{
+    if(i>0){
+      const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1', coords[0].x); line.setAttribute('y1', coords[0].y);
+      line.setAttribute('x2', c.x); line.setAttribute('y2', c.y);
+      line.setAttribute('stroke', 'var(--border-color)'); line.setAttribute('stroke-width','2');
+      line.setAttribute('data-target', i);
+      linesG.appendChild(line);
+    }
+    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx', c.x); circle.setAttribute('cy', c.y); circle.setAttribute('r', 8);
+    circle.setAttribute('fill', i===0 ? 'var(--color-p3)' : 'var(--border-color)');
+    circle.setAttribute('data-index', i);
+    nodesG.appendChild(circle);
+    const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x', c.x); text.setAttribute('y', c.y - 14);
+    text.setAttribute('text-anchor','middle'); text.setAttribute('font-size','12');
+    text.setAttribute('fill','var(--text-muted)'); text.textContent = labels[i];
+    nodesG.appendChild(text);
+  });
+  simState[slideId] = {running:false, raf:null, step:0, total:n, startTime:null};
+}
+
+function runNetworkSim(slideId){
+  const st = simState[slideId];
+  if(!st || st.running) return;
+  st.running = true; st.step = 1; st.startTime = null;
+  const stepDurationMs = 500;
+
+  function frame(ts){
+    if(!st.startTime) st.startTime = ts;
+    const elapsed = ts - st.startTime;
+    const targetStep = Math.min(st.total, 1 + Math.floor(elapsed/stepDurationMs));
+    if(targetStep > st.step || (targetStep===1 && st.step<1)){
+      for(let i=st.step; i<targetStep; i++){
+        const circle = document.querySelector(`#nodes-${slideId} circle[data-index="${i}"]`);
+        const line = document.querySelector(`#lines-${slideId} line[data-target="${i}"]`);
+        if(circle) circle.setAttribute('fill','var(--color-p3)');
+        if(line) line.setAttribute('stroke','var(--color-p3)');
+      }
+      st.step = targetStep;
+    }
+    if(st.step < st.total){
+      st.raf = requestAnimationFrame(frame);
+    } else {
+      st.running = false;
+    }
+  }
+  st.raf = requestAnimationFrame(frame);
+}
+
+function resetNetworkSim(slideId, labels){
+  const st = simState[slideId];
+  if(st && st.raf) cancelAnimationFrame(st.raf);
+  initNetworkSim(slideId, labels);
+}
+
+// --- Before/after-toggle simulation: token travels from a "before" box to an "after" box ---
+function renderBeforeAfterSvg(s){
+  const d = s.simulationData || {};
+  const beforeLabel = d.beforeLabel || 'Before';
+  const afterLabel = d.afterLabel || 'After';
+  return `<svg viewBox="0 0 600 400" preserveAspectRatio="xMidYMid meet" role="img" id="svg-${s.slideId}">
+    <title>Before and after comparison</title>
+    <desc>A marker travels from the before state to the after state when run.</desc>
+    <rect x="60" y="140" width="200" height="120" rx="10" fill="var(--surface-color)" fill-opacity="1" stroke="var(--border-color)" stroke-width="2" id="before-box-${s.slideId}"/>
+    <text x="160" y="128" text-anchor="middle" font-size="13" fill="var(--text-muted)">BEFORE</text>
+    <foreignObject x="70" y="160" width="180" height="80"><div xmlns="http://www.w3.org/1999/xhtml" style="font-family:Inter,sans-serif;font-size:13px;text-align:center;color:var(--text-main);">${escapeHtml(beforeLabel)}</div></foreignObject>
+    <rect x="340" y="140" width="200" height="120" rx="10" fill="var(--surface-color)" fill-opacity="0.4" stroke="var(--border-color)" stroke-width="2" id="after-box-${s.slideId}"/>
+    <text x="440" y="128" text-anchor="middle" font-size="13" fill="var(--text-muted)">AFTER</text>
+    <foreignObject x="350" y="160" width="180" height="80"><div xmlns="http://www.w3.org/1999/xhtml" style="font-family:Inter,sans-serif;font-size:13px;text-align:center;color:var(--text-main);">${escapeHtml(afterLabel)}</div></foreignObject>
+    <line x1="260" y1="200" x2="340" y2="200" stroke="var(--border-color)" stroke-width="2" stroke-dasharray="6,6"/>
+    <circle cx="160" cy="200" r="12" fill="var(--color-p3)" id="token-${s.slideId}"/>
+  </svg>`;
+}
+
+const beforeAfterState = {}; // slideId -> {raf, running, startTime}
+
+function initBeforeAfterSim(slideId){
+  const token = document.getElementById(`token-${slideId}`);
+  if(!token) return;
+  const beforeBox = document.getElementById(`before-box-${slideId}`);
+  const afterBox = document.getElementById(`after-box-${slideId}`);
+  token.setAttribute('cx', 160);
+  beforeBox.setAttribute('fill-opacity', '1');
+  beforeBox.setAttribute('stroke', 'var(--border-color)');
+  afterBox.setAttribute('fill-opacity', '0.4');
+  afterBox.setAttribute('stroke', 'var(--border-color)');
+  beforeAfterState[slideId] = {raf:null, running:false, startTime:null};
+}
+
+function runBeforeAfterSim(slideId){
+  const st = beforeAfterState[slideId];
+  if(!st || st.running) return;
+  st.running = true; st.startTime = null;
+  const token = document.getElementById(`token-${slideId}`);
+  const beforeBox = document.getElementById(`before-box-${slideId}`);
+  const afterBox = document.getElementById(`after-box-${slideId}`);
+  const duration = 1200, startX = 160, endX = 440;
+
+  function frame(ts){
+    if(!st.startTime) st.startTime = ts;
+    const elapsed = ts - st.startTime;
+    const t = Math.min(1, elapsed/duration);
+    const eased = t<0.5 ? 2*t*t : -1+(4-2*t)*t;
+    token.setAttribute('cx', String(startX + (endX-startX)*eased));
+    if(t >= 0.5){ beforeBox.setAttribute('fill-opacity', String(Math.max(0.4, 1-(t-0.5)*1.2))); }
+    if(t >= 0.7){
+      afterBox.setAttribute('fill-opacity', String(Math.min(1, 0.4+(t-0.7)*2)));
+      afterBox.setAttribute('stroke', 'var(--color-p3)');
+    }
+    if(t < 1){
+      st.raf = requestAnimationFrame(frame);
+    } else {
+      token.setAttribute('cx', String(endX));
+      afterBox.setAttribute('fill-opacity','1');
+      st.running = false;
+    }
+  }
+  st.raf = requestAnimationFrame(frame);
+}
+
+function resetBeforeAfterSim(slideId){
+  const st = beforeAfterState[slideId];
+  if(st && st.raf) cancelAnimationFrame(st.raf);
+  initBeforeAfterSim(slideId);
+}
+
+function getSlideById(id){
+  for(const part of SSS_CONTENT.parts){
+    for(const s of part.slides){ if(s.slideId===id) return s; }
+  }
+  return null;
+}
+
+// --- Quiz engine ---
+function shuffleArray(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+function initQuizState(){
+  const order = shuffleArray(SSS_CONTENT.quiz.map((_,i)=>i));
+  quizState = { order, idx:0, answers:{}, score:0, partScore:{1:0,2:0,3:0,4:0,5:0,6:0} };
+}
+
+function renderQuizStartHtml(){
+  return `<div class="quiz-start">
+    <h1>Assessment</h1>
+    <p>10 questions, roughly 2 per Part, testing strategic understanding rather than recall. Answers lock immediately after selection, with an explanation for each. Your last 3 attempts are saved on this device for comparison.</p>
+    <button class="btn-primary" id="quizStartBtn">Start Assessment</button>
+  </div>`;
+}
+
+function renderQuizQuestion(){
+  const container = document.getElementById('quizBody');
+  if(!container || !quizState) return;
+  const qIndex = quizState.order[quizState.idx];
+  const q = SSS_CONTENT.quiz[qIndex];
+  const answered = quizState.answers[qIndex] !== undefined;
+  const selected = quizState.answers[qIndex];
+  const letters = ['A','B','C','D'];
+  container.innerHTML = `
+    <span class="quiz-progress mono">Question ${quizState.idx+1} of ${SSS_CONTENT.quiz.length} &mdash; Part ${q.part}</span>
+    <h2>${escapeHtml(q.questionText)}</h2>
+    <div class="quiz-options" role="listbox" aria-label="Answer options">
+      ${letters.map(L=>{
+        let cls='quiz-option';
+        if(answered){
+          if(L===q.correctAnswer) cls+=' correct';
+          else if(L===selected) cls+=' incorrect';
+          cls+=' locked';
+        }
+        return `<button class="${cls}" data-letter="${L}" ${answered?'disabled':''} aria-label="Option ${L}: ${escapeHtml(q.options[L])}">${L}. ${escapeHtml(q.options[L])}</button>`;
+      }).join('')}
+    </div>
+    ${answered ? `<div class="quiz-explanation"><strong>${selected===q.correctAnswer?'Correct.':'Not quite.'}</strong> ${escapeHtml(q.explanation)}</div>
+      <button class="btn-primary" id="quizNextBtn">${quizState.idx+1 < SSS_CONTENT.quiz.length ? 'Next Question' : 'See Results'}</button>` : ''}
+  `;
+}
+
+function finishQuiz(){
+  const attempt = {score: quizState.score, breakdown: Object.assign({}, quizState.partScore), timestamp: new Date().toISOString()};
+  let attempts = [];
+  try{ attempts = JSON.parse(localStorage.getItem(QUIZ_STORAGE_KEY) || '[]'); }catch(e){ attempts = []; }
+  attempts.push(attempt);
+  if(attempts.length > 3) attempts = attempts.slice(attempts.length-3);
+  localStorage.setItem(QUIZ_STORAGE_KEY, JSON.stringify(attempts));
+  goToSlide(current+1, 'forward');
+  renderQuizResults(attempts);
+}
+
+function performanceLabel(score){
+  if(score<=4) return 'Revisit the foundations — these concepts will come up in every case.';
+  if(score<=7) return 'Solid grasp — one focused re-read will close the gaps.';
+  return 'Ready to lead this conversation in the boardroom.';
+}
+
+function weakestPart(breakdown){
+  let weakest=1, weakestRatio=2;
+  for(const p of [1,2,3,4,5,6]){
+    const ratio = breakdown[p]/PART_MAX[p];
+    if(ratio < weakestRatio){ weakestRatio=ratio; weakest=parseInt(p,10); }
+  }
+  return weakest;
+}
+
+function renderQuizResults(attempts){
+  const container = document.getElementById('resultsBody');
+  if(!container) return;
+  if(!attempts || !attempts.length){
+    container.innerHTML = '<p>Complete the assessment first to see your results.</p>';
+    return;
+  }
+  const latest = attempts[attempts.length-1];
+  const prev = attempts.length>1 ? attempts[attempts.length-2] : null;
+  const wp = weakestPart(latest.breakdown);
+  const wpScreen = screens.find(s=>s.partNumber===wp);
+  const partName = wpScreen ? wpScreen.partName : `Part ${wp}`;
+  container.innerHTML = `
+    <div class="score-display">${latest.score} / 10</div>
+    <p>${performanceLabel(latest.score)}</p>
+    ${prev ? `<p class="caption">Previous attempt: ${prev.score} / 10</p>` : ''}
+    <div class="part-breakdown">
+      ${[1,2,3,4,5,6].map(p=>`<div class="pb-cell"><div class="pb-label">Part ${p}</div><div class="pb-score">${latest.breakdown[p]}/${PART_MAX[p]}</div></div>`).join('')}
+    </div>
+    <div class="weakest-callout">
+      You may want to revisit <strong>${escapeHtml(partName)}</strong> &mdash;
+      <button class="link-btn" data-jump-part="${wp}">tap to jump back</button>.
+    </div>
+    <button class="btn-primary" id="quizRetakeBtn">Retake Quiz</button>
+    <p class="caption">${attempts.length} of 3 attempts stored on this device.</p>
+  `;
+}
+
+function quizContainerIndex(){
+  return screens.findIndex(s=>s.slide.type==='quiz-container');
+}
+function quizResultsIndex(){
+  return screens.findIndex(s=>s.slide.type==='quiz-results');
+}
+function partFirstSlideIndex(partNumber){
+  return screens.findIndex(s=>s.partNumber===partNumber);
+}
+
+document.addEventListener('click', (e)=>{
+  // Simulation trigger (network-growth only implemented)
+  const simBtn = e.target.closest('.btn-sim');
+  if(simBtn){
+    const template = simBtn.dataset.sim;
+    const slideId = simBtn.dataset.slide;
+    const isResetLabel = simBtn.textContent.trim() === 'Reset';
+    if(template === 'network-growth'){
+      const labels = getSlideById(slideId).simulationData.nodeLabels || ['A','B','C'];
+      if(isResetLabel){
+        // Second press: stop and return to initial state, relabel for the next run.
+        resetNetworkSim(slideId, labels);
+        simBtn.textContent = getSlideById(slideId).buttonLabel || 'Run Simulation';
+      } else {
+        // First press (or after a manual reset): actually run it.
+        resetNetworkSim(slideId, labels);
+        simBtn.textContent = 'Reset';
+        runNetworkSim(slideId);
+      }
+    } else if(template === 'before-after-toggle'){
+      if(isResetLabel){
+        resetBeforeAfterSim(slideId);
+        simBtn.textContent = getSlideById(slideId).buttonLabel || 'Run Simulation';
+      } else {
+        resetBeforeAfterSim(slideId);
+        simBtn.textContent = 'Reset';
+        runBeforeAfterSim(slideId);
+      }
+    }
+    return;
+  }
+
+  // Quiz interactions
+  const startBtn = e.target.closest('#quizStartBtn');
+  if(startBtn){
+    initQuizState();
+    goToSlide(quizContainerIndex(), 'forward');
+    renderQuizQuestion();
+    return;
+  }
+  const optBtn = e.target.closest('.quiz-option');
+  if(optBtn && !optBtn.disabled && quizState){
+    const qIndex = quizState.order[quizState.idx];
+    const q = SSS_CONTENT.quiz[qIndex];
+    const letter = optBtn.dataset.letter;
+    quizState.answers[qIndex] = letter;
+    if(letter === q.correctAnswer){ quizState.score++; quizState.partScore[q.part]++; }
+    renderQuizQuestion();
+    return;
+  }
+  const nextQBtn = e.target.closest('#quizNextBtn');
+  if(nextQBtn && quizState){
+    if(quizState.idx+1 < SSS_CONTENT.quiz.length){
+      quizState.idx++;
+      renderQuizQuestion();
+    } else {
+      finishQuiz();
+    }
+    return;
+  }
+  const retakeBtn = e.target.closest('#quizRetakeBtn');
+  if(retakeBtn){
+    initQuizState();
+    goToSlide(quizContainerIndex(), 'jump');
+    renderQuizQuestion();
+    return;
+  }
+  const jumpBtn = e.target.closest('[data-jump-part]');
+  if(jumpBtn){
+    goToSlide(partFirstSlideIndex(parseInt(jumpBtn.dataset.jumpPart,10)), 'jump');
+    return;
+  }
+});
+
+// --- Deck assembly & navigation ---
+function buildDeckDom(){
+  const deck = document.getElementById('deck');
+  deck.innerHTML = '';
+  screens.forEach((screen, i)=>{
+    const el = document.createElement('div');
+    el.className = 'slide' + (screen.slide.type==='simulation' ? ' sim-fade' : '');
+    el.dataset.index = i;
+    el.dataset.part = screen.partNumber;
+    if(screen.icon){
+      el.innerHTML = `<svg class="part-badge" style="color:var(--color-${screen.accentRef})"><use href="#${screen.icon}"/></svg>` + renderSlideBody(screen);
+    } else {
+      el.innerHTML = renderSlideBody(screen);
+    }
+    if(screen.partNumber > 0 && screen.partNumber < 7 && (screen.slide.type==='strategic-pause' || screen.slide.type==='architecture-checkpoint')){
+      el.style.background = `color-mix(in srgb, var(--color-${screen.accentRef}) 12%, var(--bg-color))`;
+    }
+    deck.appendChild(el);
+  });
+}
+
+function updateCounter(idx){
+  const screen = screens[idx];
+  let partLabel;
+  if(screen.partNumber===0) partLabel = 'Title';
+  else if(screen.partNumber===7) partLabel = 'Assessment';
+  else partLabel = `Part ${screen.partNumber}: ${screen.partName}`;
+  document.getElementById('slideCounter').textContent = `Slide ${idx+1} / ${screens.length} — ${partLabel}`;
+  const pct = ((idx+1)/screens.length)*100;
+  const fill = document.getElementById('progressFill');
+  fill.style.width = pct + '%';
+  fill.style.background = screen.accentRef ? `var(--color-${screen.accentRef})` : 'var(--color-p1)';
+}
+
+function applySlideColors(idx){
+  const el = document.querySelector(`.slide[data-index="${idx}"]`);
+  if(!el) return;
+  const headings = el.querySelectorAll('h1,h2,h3');
+  headings.forEach((h,i)=>{ h.style.color = professionalColors[i % professionalColors.length]; });
+}
+
+function goToSlide(index, direction){
+  if(index < 0 || index >= screens.length) return;
+  const prevIndex = current;
+  const prevEl = document.querySelector(`.slide[data-index="${prevIndex}"]`);
+  const nextEl = document.querySelector(`.slide[data-index="${index}"]`);
+  const crossingPart = screens[prevIndex] && screens[prevIndex].partNumber !== screens[index].partNumber;
+
+  if(prevEl && prevEl !== nextEl){
+    prevEl.classList.toggle('part-boundary', crossingPart);
+    if(direction==='backward'){ prevEl.classList.add('exit-right'); }
+    else { prevEl.classList.add('exit-left'); }
+    prevEl.classList.remove('active');
+  }
+  if(direction==='backward'){ nextEl.classList.add('enter-left'); }
+  else if(direction==='forward'){ nextEl.classList.add('enter-right'); }
+
+  requestAnimationFrame(()=>{
+    nextEl.classList.remove('enter-left','enter-right');
+    nextEl.classList.add('active');
+    setTimeout(()=>{ if(prevEl) prevEl.classList.remove('exit-left','exit-right','part-boundary'); }, 300);
+  });
+
+  current = index;
+  updateCounter(index);
+  applySlideColors(index);
+
+  const activeScreen = screens[index];
+  if(activeScreen.slide.type==='quiz-container' && !quizState){
+    initQuizState();
+    renderQuizQuestion();
+  }
+  if(activeScreen.slide.type==='quiz-results'){
+    let attempts = [];
+    try{ attempts = JSON.parse(localStorage.getItem(QUIZ_STORAGE_KEY) || '[]'); }catch(e){ attempts = []; }
+    renderQuizResults(attempts);
+  }
+}
+
+document.getElementById('nextBtn').addEventListener('click', ()=>goToSlide(current+1,'forward'));
+document.getElementById('prevBtn').addEventListener('click', ()=>goToSlide(current-1,'backward'));
+document.addEventListener('keydown', (e)=>{
+  if(e.target.closest('.quiz-options')) return; // let native button Tab/Enter handle option focus
+  if(e.key==='ArrowRight') goToSlide(current+1,'forward');
+  if(e.key==='ArrowLeft') goToSlide(current-1,'backward');
+});
+
+document.getElementById('themeToggle').addEventListener('click', ()=>{
+  const isDark = document.body.getAttribute('data-theme')==='dark';
+  document.body.setAttribute('data-theme', isDark ? 'light':'dark');
+  localStorage.setItem('sss_theme', isDark ? 'light':'dark');
+});
+document.getElementById('printBtn').addEventListener('click', ()=>window.print());
+document.getElementById('fullscreenBtn').addEventListener('click', ()=>{
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+});
+
+// --- Init ---
+(function init(){
+  if(!SSS_CONTENT){ document.getElementById('deck').innerHTML = '<p style="padding:40px">No content loaded. This file needs SSS_CONTENT injected by build.py.</p>'; return; }
+  const savedTheme = localStorage.getItem('sss_theme');
+  if(savedTheme) document.body.setAttribute('data-theme', savedTheme);
+  applyTheme(SSS_CONTENT.theme);
+  screens = buildScreens(SSS_CONTENT);
+  buildDeckDom();
+  goToSlide(0, 'jump');
+  document.querySelector('.slide[data-index="0"]').classList.add('active');
+
+  screens.forEach(screen=>{
+    if(screen.slide.type==='simulation'){
+      if(screen.slide.simulationTemplate==='network-growth'){
+        initNetworkSim(screen.slide.slideId, screen.slide.simulationData.nodeLabels || ['A','B','C']);
+      } else if(screen.slide.simulationTemplate==='before-after-toggle'){
+        initBeforeAfterSim(screen.slide.slideId);
+      }
+    }
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SSS Deck</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap');
+
+:root{
+  --bg-color:#FFFFFF; --surface-color:#F8F9FA; --text-main:#1A1A2E; --text-muted:#666680;
+  --border-color:#E2E4EA;
+  --color-p1:#D85A30; --color-p2:#534AB7; --color-p3:#0F6E56; --color-p4:#BA7517; --color-p5:#185FA5; --color-p6:#993556;
+  --nav-height:56px; --radius:12px; --shadow:0 2px 16px rgba(0,0,0,0.08);
+}
+[data-theme="dark"]{
+  --bg-color:#0F1117; --surface-color:#1A1D27; --text-main:#E8E8EC; --text-muted:#9090A8; --border-color:#2E3045;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; background:var(--bg-color); color:var(--text-main);
+  font-family:'Inter',sans-serif; font-size:1rem; line-height:1.7;
+  transition:background-color 300ms ease, color 300ms ease;
+  overflow:hidden; height:100vh;
+}
+h1,h2,h3{font-family:'Playfair Display',serif; font-weight:700;}
+h1{font-size:2.4rem;line-height:1.2;} h2{font-size:1.8rem;line-height:1.3;}
+h3{font-family:'Inter',sans-serif;font-weight:600;font-size:1.2rem;line-height:1.4;}
+.caption{font-family:'Inter',sans-serif;font-size:0.8rem;color:var(--text-muted);}
+.mono{font-family:'JetBrains Mono',monospace;font-size:13px;}
+button{font-family:inherit;cursor:pointer;}
+:focus-visible{box-shadow:0 0 0 3px rgba(0,95,204,0.5); outline:none;}
+
+.icon-registry{position:absolute;width:0;height:0;overflow:hidden;}
+
+.progress-bar{position:fixed;top:0;left:0;height:4px;background:var(--border-color);width:100%;z-index:50;}
+.progress-fill{height:100%;width:0%;transition:width 280ms ease;background:var(--color-p1);}
+
+.top-bar{
+  position:fixed;top:4px;left:0;right:0;height:var(--nav-height);
+  background:var(--surface-color);border-bottom:1px solid var(--border-color);
+  display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:49;
+}
+.slide-counter{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text-muted);}
+.top-bar-actions{display:flex;gap:8px;}
+.icon-btn{
+  width:36px;height:36px;border-radius:8px;border:1px solid var(--border-color);
+  background:var(--bg-color);color:var(--text-main);display:flex;align-items:center;justify-content:center;
+}
+.icon-btn:hover{background:var(--border-color);}
+
+#deck{position:absolute;top:60px;left:0;right:0;bottom:0;overflow:hidden;}
+.slide{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  padding:48px 64px;opacity:0;pointer-events:none;overflow-y:auto;
+  transition:opacity 280ms ease, transform 280ms cubic-bezier(0,0,0.2,1);
+  will-change:transform,opacity;
+}
+.slide.active{opacity:1;pointer-events:all;transform:none;}
+.slide.exit-left{opacity:0;transform:translateX(-24px);}
+.slide.exit-right{opacity:0;transform:translateX(24px);}
+.slide.enter-left{transform:translateX(-24px);}
+.slide.enter-right{transform:translateX(24px);}
+.slide.sim-fade{transition:opacity 400ms ease;}
+.slide.sim-fade.exit-left,.slide.sim-fade.exit-right,.slide.sim-fade.enter-left,.slide.sim-fade.enter-right{transform:none;}
+.slide.part-boundary.exit-left,.slide.part-boundary.exit-right{transform:scale(0.97);}
+
+.part-badge{position:absolute;top:16px;right:20px;width:16px;height:16px;opacity:0.4;}
+
+.part-opening{
+  font-family:'Playfair Display',serif;font-size:1.3rem;font-style:italic;
+  padding:16px 20px;border-left:4px solid currentColor;margin-bottom:24px;max-width:70ch;
+}
+
+.slide-statement h1{max-width:16ch;}
+.slide-statement .subhead{font-size:1.3rem;color:var(--text-muted);max-width:50ch;}
+
+.evidence-stat{font-family:'JetBrains Mono',monospace;font-size:4rem;font-weight:400;margin:8px 0;}
+.evidence-source{font-size:0.8rem;color:var(--text-muted);margin-bottom:16px;}
+
+table.comparison{border-collapse:collapse;width:100%;max-width:900px;}
+table.comparison th,table.comparison td{border:1px solid var(--border-color);padding:10px 14px;text-align:left;}
+table.comparison th{background:var(--surface-color);}
+
+.process-steps{display:flex;gap:16px;flex-wrap:wrap;margin-top:24px;}
+.process-step{flex:1;min-width:180px;border:1px solid var(--border-color);border-radius:var(--radius);padding:16px;background:var(--surface-color);}
+.process-step .step-num{font-family:'JetBrains Mono',monospace;color:var(--text-muted);font-size:0.8rem;}
+
+.case-card{display:flex;gap:24px;align-items:flex-start;margin-top:16px;}
+.badge{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-family:'Playfair Display',serif;font-weight:700;font-size:1.2rem;color:#fff;flex-shrink:0;}
+.case-fields dt{font-weight:600;margin-top:12px;} .case-fields dd{margin:0 0 0 0;color:var(--text-main);}
+
+.sim-layout{display:flex;gap:32px;margin-top:16px;}
+.sim-explain{flex:0 0 38%;}
+.sim-stage{flex:1;border:1px solid var(--border-color);border-radius:var(--radius);background:var(--surface-color);display:flex;align-items:center;justify-content:center;min-height:340px;}
+.btn-sim{min-width:180px;min-height:44px;padding:10px 20px;border-radius:8px;border:none;background:var(--color-p3);color:#fff;font-weight:600;margin-top:16px;}
+.sim-stub{color:var(--text-muted);font-style:italic;padding:24px;text-align:center;}
+
+.bridging{margin-top:20px;padding:12px 16px;border-radius:var(--radius);background:var(--surface-color);border:1px solid var(--border-color);font-size:0.95rem;}
+.bridging .kind{font-family:'JetBrains Mono',monospace;font-size:0.75rem;text-transform:uppercase;color:var(--text-muted);}
+
+.strategic-pause{max-width:900px;}
+.sp-block{margin-bottom:20px;}
+.sp-label{font-family:'JetBrains Mono',monospace;font-size:0.75rem;text-transform:uppercase;color:var(--text-muted);}
+
+.framework-labels{list-style:none;padding:0;margin-top:16px;}
+.framework-labels li{padding:8px 0;border-bottom:1px solid var(--border-color);}
+
+.data-story-chart{display:flex;align-items:flex-end;gap:16px;height:220px;margin-top:24px;border-bottom:2px solid var(--border-color);padding-bottom:0;}
+.bar-wrap{display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;}
+.bar{width:60%;background:var(--color-p3);border-radius:4px 4px 0 0;transition:height 600ms ease;}
+.bar-label{font-size:0.75rem;color:var(--text-muted);margin-top:6px;text-align:center;}
+
+.title-slide{display:flex;flex-direction:column;justify-content:center;height:100%;}
+
+.bottom-nav{position:fixed;bottom:20px;right:20px;display:flex;gap:12px;z-index:49;}
+.nav-circle{width:48px;height:48px;border-radius:50%;border:1px solid var(--border-color);
+  background:var(--surface-color);color:var(--text-main);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);}
+
+.quiz-start,.quiz-results{max-width:700px;}
+.btn-primary{min-height:44px;padding:10px 24px;border-radius:8px;border:none;background:var(--color-p3);color:#fff;font-weight:600;margin-top:16px;}
+.quiz-options{display:flex;flex-direction:column;gap:10px;margin-top:20px;max-width:700px;}
+.quiz-option{min-height:44px;text-align:left;padding:12px 16px;border-radius:8px;border:1px solid var(--border-color);background:var(--surface-color);color:var(--text-main);}
+.quiz-option.correct{border-color:#1a7f37;background:rgba(26,127,55,0.12);}
+.quiz-option.incorrect{border-color:#c62828;background:rgba(198,40,40,0.12);}
+.quiz-option.locked{cursor:default;}
+.quiz-explanation{margin-top:16px;padding:12px 16px;border-radius:8px;background:var(--surface-color);border:1px solid var(--border-color);max-width:700px;}
+.quiz-progress{margin-bottom:4px;display:block;}
+.score-display{font-family:'JetBrains Mono',monospace;font-size:3rem;}
+.part-breakdown{display:flex;gap:12px;flex-wrap:wrap;margin:20px 0;}
+.pb-cell{border:1px solid var(--border-color);border-radius:8px;padding:10px 14px;text-align:center;min-width:80px;}
+.pb-label{font-size:0.75rem;color:var(--text-muted);}
+.pb-score{font-family:'JetBrains Mono',monospace;font-size:1.1rem;}
+.weakest-callout{margin:16px 0;padding:12px 16px;border-radius:8px;background:var(--surface-color);border:1px solid var(--border-color);}
+.link-btn{background:none;border:none;color:var(--color-p5);text-decoration:underline;padding:0;font-size:inherit;}
+
+@media print{
+  .top-bar,.progress-bar,.bottom-nav{display:none !important;}
+  #deck{position:static;overflow:visible;top:0;}
+  .slide{position:relative !important;opacity:1 !important;transform:none !important;pointer-events:all !important;
+    page-break-after:always;width:100% !important;height:auto !important;min-height:148mm;padding:12mm;overflow:visible;}
+  svg{break-inside:avoid;}
+  *{animation:none !important;transition:none !important;}
+  @page{size:A4 landscape;margin:10mm;}
+}
+@media (prefers-reduced-motion: reduce){
+  .slide{transition-duration:0ms !important;}
+  *{animation:none !important;}
+}
+</style>
+</head>
+<body data-theme="light">
+
+<svg class="icon-registry" aria-hidden="true">
+<defs>
+<symbol id="icon-risk" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z M12 9v4 M12 16h.01"/></symbol>
+<symbol id="icon-growth" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M3 17l6-6 4 4 8-8 M15 7h6v6"/></symbol>
+<symbol id="icon-network" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M12 4a2 2 0 100 4 2 2 0 000-4z M5 18a2 2 0 100 4 2 2 0 000-4z M19 18a2 2 0 100 4 2 2 0 000-4z M12 8l-5.5 9 M12 8l5.5 9 M7 19h10"/></symbol>
+<symbol id="icon-data" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3z M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6 M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+<symbol id="icon-lock" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M6 11V8a6 6 0 0112 0v3 M5 11h14v9H5z M12 15v2"/></symbol>
+<symbol id="icon-globe" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M12 3a9 9 0 100 18 9 9 0 000-18z M3 12h18 M12 3c2.5 2.5 3.5 5.8 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.8-3.5-9s1-6.5 3.5-9z"/></symbol>
+<symbol id="icon-people" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M9 11a3 3 0 100-6 3 3 0 000 6z M3 20c0-3 2.5-5 6-5s6 2 6 5 M16 8a3 3 0 110-6 M15 14c2.8.3 5 2.3 5 6"/></symbol>
+<symbol id="icon-process" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M3 6h13 M3 12h13 M3 18h13 M18 15l4 3-4 3"/></symbol>
+<symbol id="icon-money" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M12 3a9 9 0 100 18 9 9 0 000-18z M9 8h4a2 2 0 010 4H9h4a2 2 0 010 4H9 M10 6v12"/></symbol>
+<symbol id="icon-time" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M12 3a9 9 0 100 18 9 9 0 000-18z M12 7v5l4 2"/></symbol>
+<symbol id="icon-idea" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M9 18h6 M10 21h4 M8 11a4 4 0 118 0c0 2-1.5 2.8-2 4-.2.6-.3 1-.3 1H10.3s-.1-.4-.3-1c-.5-1.2-2-2-2-4z"/></symbol>
+<symbol id="icon-warning" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" d="M12 4l9 16H3L12 4z M12 10v4 M12 17h.01"/></symbol>
+</defs>
+</svg>
+
+<div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+<div class="top-bar">
+  <div class="slide-counter" id="slideCounter" aria-live="polite">Slide 1 / 1</div>
+  <div class="top-bar-actions">
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle dark mode"><svg width="18" height="18"><use href="#icon-idea"/></svg></button>
+    <button class="icon-btn" id="printBtn" aria-label="Print or export PDF"><svg width="18" height="18"><use href="#icon-data"/></svg></button>
+    <button class="icon-btn" id="fullscreenBtn" aria-label="Toggle fullscreen"><svg width="18" height="18"><use href="#icon-globe"/></svg></button>
+  </div>
+</div>
+
+<div id="deck"></div>
+
+<div class="bottom-nav">
+  <button class="nav-circle" id="prevBtn" aria-label="Previous slide">&#8592;</button>
+  <button class="nav-circle" id="nextBtn" aria-label="Next slide">&#8594;</button>
+</div>
+
+<script>
+const SSS_CONTENT = {
+  "meta": {
+    "topic": "Blockchain in Supply Chain Management",
+    "domain": "MBA",
+    "audience": "MBA",
+    "courseCode": "SCM-712",
+    "subjectName": "Digital Supply Chain Strategy",
+    "batch": "PGDM 2025-27",
+    "academicYear": "2026-27",
+    "duration": "2 Hours",
+    "slideCountPreset": 40,
+    "faculty": {
+      "name": "Dr. Natraj N. A.",
+      "title": "Assistant Professor (Grade-11), SIDTM",
+      "institution": "Symbiosis International University, Pune - 412115",
+      "email": "natraj@sidtm.edu.in"
+    },
+    "createdDate": "2026-07-17"
+  },
+  "theme": {
+    "name": "Blockchain",
+    "palette": { "p1": "#D85A30", "p2": "#534AB7", "p3": "#0F6E56", "p4": "#BA7517", "p5": "#185FA5", "p6": "#993556" },
+    "fonts": { "heading": "Playfair Display", "body": "Inter", "mono": "JetBrains Mono" }
+  },
+  "parts": [
+    { "partNumber": 0, "partName": "Title", "slides": [
+      { "type": "title", "topic": "Blockchain in Supply Chain Management", "faculty": "Dr. Natraj N. A." }
+    ]},
+    { "partNumber": 1, "partName": "The Current Paradigm & Its Limits", "accentRef": "p1", "icon": "icon-warning",
+      "opening": { "device": "tension", "text": "Maersk and IBM spent five years and reportedly over $100M building TradeLens, a blockchain platform meant to fix exactly this problem -- then shut it down in 2023 for lack of commercial adoption. Why did the technology work but the paradigm shift fail?" },
+      "slides": [
+        { "slideId": "p1-s1", "type": "statement", "headline": "Trust Is Your Most Expensive Line Item", "subhead": "You just don't see it on the P&L." },
+        { "slideId": "p1-s2", "type": "evidence", "headline": "The Cost of Not Trusting Your Own Supply Chain", "statistic": { "value": "35", "unit": "%", "label": "of global trade documentation cost is verification and reconciliation overhead" }, "source": "World Economic Forum, 2023", "contextLines": [ "Every handoff between supplier, freight forwarder, customs, and retailer re-verifies data the previous party already verified.", "That redundancy isn't a process failure -- it's the rational response to not trusting a shared ledger." ], "bridging": { "kind": "strategic-risk", "text": "Organizations that treat this as a documentation problem, not a trust-architecture problem, will keep paying the 35% tax indefinitely." } },
+        { "slideId": "p1-s3", "type": "comparison-matrix", "headline": "Centralized Ledger vs. Distributed Reality", "columns": ["Dimension", "Centralized ERP Record", "Physical Supply Chain"], "rows": [ { "label": "Who updates it", "values": ["One party's system", "Six or more independent parties"] }, { "label": "Source of truth", "values": ["Whoever controls the database", "Disputed by default"] }, { "label": "Dispute resolution", "values": ["Legal/manual reconciliation", "Weeks of delay"] } ], "bridging": { "kind": "business-implication", "text": "Every reconciliation cycle is working capital sitting idle in transit disputes rather than funding the next order." } },
+        { "slideId": "p1-s4", "type": "case-study", "company": "Maersk / IBM TradeLens", "year": 2023, "badgeInitials": "TL", "challenge": "Global shipping documentation required manual verification across dozens of parties per container, adding days to every shipment.", "decision": "Built a permissioned blockchain platform to give all supply chain parties a shared, tamper-evident record.", "outcome": "Technically functional, but shut down in 2023 -- competitors refused to run their trade data through a rival-owned platform, regardless of the technology's merit.", "bridging": { "kind": "strategic-risk", "text": "The lesson for your organization isn't 'blockchain doesn't work' -- it's that governance and neutrality decide adoption more than technical architecture does." } },
+        { "slideId": "p1-s5", "type": "strategic-pause", "synthesisStatement": "The current paradigm doesn't fail because trust verification is hard -- it fails because every party pays the verification cost alone, with no shared infrastructure to spread it.", "reflectionQuestion": "Where in your own supply chain are you paying to re-verify something a partner already verified?", "actionImplication": "Before evaluating any blockchain vendor, map which reconciliation costs are actually shared-trust problems versus simple data-quality problems -- they require different fixes." }
+      ]
+    },
+    { "partNumber": 2, "partName": "Introducing Distributed Ledgers: Principles & Origins", "accentRef": "p2", "icon": "icon-idea",
+      "opening": { "device": "question", "text": "What if every party in your supply chain could see the same record at the same time, and none of them could quietly change it after the fact?" },
+      "slides": [
+        { "slideId": "p2-s1", "type": "statement", "headline": "Think of It as a Shared Notebook Nobody Can Erase", "subhead": "Not a database. A witnessed record." },
+        { "slideId": "p2-s2", "type": "evidence", "headline": "Why 'Distributed' Is the Whole Point", "statistic": { "value": "2008", "label": "the year the core design pattern emerged, in Bitcoin's white paper" }, "source": "Nakamoto, 2008", "contextLines": [ "The innovation wasn't cryptography -- that existed for decades.", "It was removing the need for a single trusted intermediary to keep the record straight." ], "bridging": { "kind": "market-opportunity", "text": "Any industry where intermediaries currently charge for trust-brokering is a candidate for margin compression once a shared ledger removes that role." } },
+        { "slideId": "p2-s3", "type": "framework-card", "headline": "Applying the Trust Triangle", "frameworkName": "Trust Triangle (Identity, Data, Value)", "diagramLabels": ["Identity: who is this party", "Data: what did they claim", "Value: what changed hands"], "bridging": { "kind": "business-implication", "text": "Most supply chain disputes trace to a break in one leg of this triangle -- diagnosing which leg tells you whether you need a ledger, a better API, or better contracts." } },
+        { "slideId": "p2-s4", "type": "process-flow", "headline": "How a Block Actually Gets Added", "steps": [ { "label": "Transaction proposed", "description": "A party submits a shipment update.", "icon": "icon-data" }, { "label": "Network validates", "description": "Other nodes check it against their copy of the ledger.", "icon": "icon-network" }, { "label": "Consensus reached", "description": "A majority agree the update is valid.", "icon": "icon-process" }, { "label": "Block appended", "description": "The record becomes effectively permanent.", "icon": "icon-lock" } ], "bridging": { "kind": "business-implication", "text": "That permanence is what lets you skip the re-verification step your competitors are still paying for." } },
+        { "slideId": "p2-s5", "type": "comparison-matrix", "headline": "Public vs. Permissioned Ledgers", "columns": ["Dimension", "Public (e.g. Ethereum)", "Permissioned (e.g. Hyperledger)"], "rows": [ { "label": "Who can validate", "values": ["Anyone", "Approved consortium members"] }, { "label": "Speed", "values": ["Slower, more decentralized", "Faster, more centralized trust"] }, { "label": "Typical use", "values": ["Public asset tracking", "B2B consortiums like retailers + suppliers"] } ], "bridging": { "kind": "strategic-risk", "text": "Choosing public architecture for a B2B consortium use case is the single most common and most expensive design mistake in this space." } },
+        { "slideId": "p2-s6", "type": "strategic-pause", "synthesisStatement": "A distributed ledger is a governance decision wearing a technology costume -- the cryptography is the easy part.", "reflectionQuestion": "Who would need to sit at the table before your organization could even pilot a shared ledger with two supply chain partners?", "actionImplication": "Start the governance conversation with your top three suppliers before you start the vendor RFP -- the RFP will fail without it." }
+      ]
+    },
+    { "partNumber": 3, "partName": "The Architectural Shift", "accentRef": "p3", "icon": "icon-process",
+      "opening": { "device": "statistic", "text": "Walmart cut the time to trace a package of mangoes from farm to store from 7 days to 2.2 seconds using a blockchain pilot with IBM Food Trust. Here's the architecture that made that possible." },
+      "slides": [
+        { "slideId": "p3-s1", "type": "statement", "headline": "Traceability Is a Query, Not an Investigation", "subhead": "That's the architectural shift in one sentence." },
+        { "slideId": "p3-s2", "type": "simulation", "headline": "Simulation: Watch a Shipment Move Through a Shared Ledger", "explanation": "This simulation shows a single shipment update propagating to every node in a permissioned network simultaneously, instead of moving sequentially through five separate company databases. Press Run to watch propagation happen in real time. Notice there is no single point where the record can be quietly altered after the fact -- every node holds the same version.", "simulationTemplate": "network-growth", "simulationData": { "nodeLabels": ["Supplier", "Freight Forwarder", "Customs", "Distributor", "Retailer"], "originNode": "Supplier" }, "buttonLabel": "Run Simulation", "bridging": { "kind": "business-implication", "text": "Real-time propagation is what compresses a 7-day trace request into a 2-second query." } },
+        { "slideId": "p3-s3", "type": "process-flow", "headline": "From Shipment Event to Settled Payment", "steps": [ { "label": "IoT sensor confirms delivery", "description": "Temperature and location logged automatically.", "icon": "icon-data" }, { "label": "Event written to ledger", "description": "All parties see the same delivery confirmation.", "icon": "icon-network" }, { "label": "Smart contract evaluates terms", "description": "Checks delivery against agreed conditions.", "icon": "icon-process" }, { "label": "Payment releases", "description": "No manual invoice matching required.", "icon": "icon-money" } ], "bridging": { "kind": "market-opportunity", "text": "Suppliers who can prove same-day settlement capability can negotiate better terms than competitors still on 30-day cycles." } },
+        { "slideId": "p3-s4", "type": "simulation", "headline": "Simulation: Smart Contract Triggers Automatic Payment", "explanation": "This simulation demonstrates a smart contract releasing payment automatically the moment a delivery is confirmed on-ledger, without a purchasing manager manually approving an invoice. Press Run to trigger the delivery event and watch the payment condition evaluate and fire.", "simulationTemplate": "before-after-toggle", "simulationData": { "beforeLabel": "Manual 3-way match: 15 days average", "afterLabel": "Smart contract release: same-day" }, "buttonLabel": "Run Simulation", "bridging": { "kind": "business-implication", "text": "Compressing payment cycles from 15 days to same-day is a direct working-capital release, not just a process nicety." } },
+        { "slideId": "p3-s5", "type": "data-story", "headline": "Trace Time Before and After", "chartType": "bar", "dataPoints": [ { "label": "Manual trace (days)", "value": 7 }, { "label": "Ledger-based trace (seconds, shown as 0.01 days)", "value": 0.01 } ], "annotations": ["Walmart / IBM Food Trust pilot, mango traceability"], "source": "IBM Food Trust case data, 2018", "bridging": { "kind": "strategic-risk", "text": "In a recall scenario, that gap is the difference between pulling one pallet and pulling an entire product line." } },
+        { "slideId": "p3-s6", "type": "strategic-pause", "synthesisStatement": "The architectural shift isn't 'add blockchain' -- it's moving from sequential, siloed verification to simultaneous, shared verification.", "reflectionQuestion": "Which single event in your supply chain, if visible to every party instantly, would eliminate the most disputes?", "actionImplication": "Pilot shared visibility on that one event before attempting an end-to-end platform rebuild." }
+      ]
+    },
+    { "partNumber": 4, "partName": "Strategic Applications & Business Models", "accentRef": "p4", "icon": "icon-money",
+      "opening": { "device": "tension", "text": "De Beers built Tracr to prove diamonds are conflict-free. Walmart built Food Trust to prove mangoes are safe. Same technology, completely different revenue logic. Which model applies to you?" },
+      "slides": [
+        { "slideId": "p4-s1", "type": "statement", "headline": "The Technology Is Identical. The Business Model Isn't.", "subhead": "Provenance, compliance, and financing monetize differently." },
+        { "slideId": "p4-s2", "type": "case-study", "company": "De Beers (Tracr)", "year": 2018, "badgeInitials": "DB", "challenge": "Consumers and regulators demanded proof that diamonds were not funding conflict, but paper certificates were easy to forge.", "decision": "Built a blockchain platform tracking diamonds from mine to retail, shared across the industry consortium.", "outcome": "By 2022, over 15 diamond producers representing roughly 30% of global production had joined the platform, turning provenance into a purchasing criterion rather than a compliance afterthought.", "bridging": { "kind": "market-opportunity", "text": "First movers on verifiable provenance captured premium retail positioning before it became a baseline expectation." } },
+        { "slideId": "p4-s3", "type": "simulation", "headline": "Simulation: Three Revenue Models, Same Ledger", "explanation": "This simulation lets you toggle between three ways companies monetize shared ledger infrastructure: charging for platform access, charging for verified-data premiums, and using the ledger as collateral infrastructure for supply chain financing. Press Run to cycle through each model and see who captures the value.", "simulationTemplate": "decision-tree", "simulationData": { "branches": ["Platform access fee", "Verified-data premium", "Financing collateral"] }, "buttonLabel": "Run Simulation", "bridging": { "kind": "market-opportunity", "text": "The financing-collateral model is the least crowded of the three and the one most banks are actively seeking supply chain partners for right now." } },
+        { "slideId": "p4-s4", "type": "case-study", "company": "Walmart (IBM Food Trust)", "year": 2018, "badgeInitials": "WM", "challenge": "Foodborne illness outbreaks required tracing contaminated produce back through the supply chain, historically taking up to 7 days.", "decision": "Mandated leafy green suppliers adopt blockchain-based traceability by September 2019.", "outcome": "Trace time fell to 2.2 seconds; the mandate also shifted supplier relationships toward those willing to invest in traceability infrastructure.", "bridging": { "kind": "strategic-risk", "text": "Suppliers who couldn't comply were functionally deselected -- traceability became a market-access requirement, not a nice-to-have." } },
+        { "slideId": "p4-s5", "type": "comparison-matrix", "headline": "Who Captures the Value in Each Model", "columns": ["Model", "Who Pays", "Who Captures Margin"], "rows": [ { "label": "Platform access", "values": ["All consortium members", "Platform operator"] }, { "label": "Verified-data premium", "values": ["End consumer", "Brand + first-tier supplier"] }, { "label": "Financing collateral", "values": ["Borrower (via interest)", "Lender + platform operator"] } ], "bridging": { "kind": "business-implication", "text": "If you don't operate the platform, your only path to capturing margin is the verified-data premium model -- which requires consumer-facing brand equity you may not have." } },
+        { "slideId": "p4-s6", "type": "strategic-pause", "synthesisStatement": "The winners in this space aren't the best technologists -- they're the ones who correctly identified which of the three revenue models fit their position in the value chain.", "reflectionQuestion": "In your value chain, are you positioned to operate the platform, brand the data, or finance against it?", "actionImplication": "Answer that question before writing a single line of your blockchain business case -- it determines which vendor conversation you should even be having." }
+      ]
+    },
+    { "partNumber": 5, "partName": "The Ecosystem: Risk, Regulation & Competition", "accentRef": "p5", "icon": "icon-lock",
+      "opening": { "device": "statistic", "text": "By 2024, the EU's Digital Product Passport regulation began requiring traceability data for entire product categories -- whether or not the companies involved had a blockchain strategy. Regulation is arriving faster than most roadmaps." },
+      "slides": [
+        { "slideId": "p5-s1", "type": "statement", "headline": "Immutability Cuts Both Ways", "subhead": "A record you can't alter is also a record you can't quietly fix." },
+        { "slideId": "p5-s2", "type": "evidence", "headline": "The GDPR Collision Nobody Budgeted For", "statistic": { "value": "€20M", "label": "maximum GDPR fine, or 4% of global turnover, whichever is higher" }, "source": "EU GDPR, Article 83", "contextLines": [ "GDPR's 'right to erasure' assumes data can be deleted.", "A public, immutable ledger structurally cannot delete anything -- so personal data should never be written to it directly." ], "bridging": { "kind": "strategic-risk", "text": "Writing customer or employee personal data directly onto an immutable ledger is not a technical mistake -- it's a regulatory exposure that can't be undone after the fact." } },
+        { "slideId": "p5-s3", "type": "simulation", "headline": "Simulation: Where a 51% Consensus Attack Actually Bites", "explanation": "This simulation shows what happens if a minority of malicious or colluding nodes attempts to alter historical shipment records in a permissioned network. Press Run to see how consensus thresholds either block or allow the tampered record, depending on how many nodes the attacker controls.", "simulationTemplate": "network-growth", "simulationData": { "nodeLabels": ["Node A", "Node B", "Node C", "Node D", "Node E"], "attackerControlledCount": 2 }, "buttonLabel": "Run Simulation", "bridging": { "kind": "strategic-risk", "text": "Consortiums with fewer than five to seven independent validating members are more exposed to this than most governance committees realize." } },
+        { "slideId": "p5-s4", "type": "framework-card", "headline": "Applying Porter's Five Forces to Ledger Consortiums", "frameworkName": "Porter's Five Forces", "diagramLabels": ["Buyer power: shifts to whoever controls consortium admission", "Supplier power: falls once traceability becomes mandatory", "New entrants: blocked by consortium governance, not technology", "Substitutes: centralized platforms with contractual trust", "Rivalry: shifts from price to who sets the data standard"], "bridging": { "kind": "strategic-risk", "text": "If a competitor's platform becomes the industry standard consortium, you negotiate on their terms indefinitely." } },
+        { "slideId": "p5-s5", "type": "strategic-pause", "synthesisStatement": "Regulation and consortium governance -- not cryptography -- are now the binding constraints on blockchain supply chain adoption.", "reflectionQuestion": "If a regulator asked to see your data-deletion capability tomorrow, could your ledger architecture comply?", "actionImplication": "Get legal and compliance in the room before the technical architecture is finalized, not after." }
+      ]
+    },
+    { "partNumber": 6, "partName": "The Future & Strategic Imperatives for Leaders", "accentRef": "p6", "icon": "icon-globe",
+      "opening": { "device": "question", "text": "If every one of your competitors has shared-ledger traceability within five years, is it still a differentiator -- or just a cost of staying in the market?" },
+      "slides": [
+        { "slideId": "p6-s1", "type": "statement", "headline": "Today's Differentiator Is Tomorrow's Entry Ticket", "subhead": "Plan the second-mover cost, not just the first-mover advantage." },
+        { "slideId": "p6-s2", "type": "simulation", "headline": "Simulation: Model Your Adoption Timing Decision", "explanation": "This simulation lets you compare the cost and risk profile of adopting shared-ledger traceability now, in two years, or in five years, based on projected regulatory deadlines and consortium formation. Press Run to see how the cost curve shifts under each timing scenario.", "simulationTemplate": "data-story-reveal", "simulationData": { "scenarios": ["Adopt now", "Adopt in 2 years", "Adopt in 5 years"] }, "buttonLabel": "Run Simulation", "bridging": { "kind": "strategic-risk", "text": "Waiting for the technology to mature usually means adopting after the consortium seats are already filled by competitors." } },
+        { "slideId": "p6-s3", "type": "data-story", "headline": "Projected Consortium Membership Saturation", "chartType": "line", "dataPoints": [ { "label": "2024", "value": 15 }, { "label": "2026", "value": 34 }, { "label": "2028", "value": 58 } ], "annotations": ["Illustrative projection based on current consortium growth rates"], "source": "Author estimate based on published consortium membership disclosures, 2024", "bridging": { "kind": "market-opportunity", "text": "The negotiating leverage of an early consortium seat erodes as membership saturates -- late entrants join on terms they didn't help write." } },
+        { "slideId": "p6-s4", "type": "strategic-pause", "synthesisStatement": "The strategic question was never 'should we adopt blockchain' -- it's 'which consortium do we help govern before someone else writes the rules.'", "reflectionQuestion": "If you had to name the one consortium your organization should be at the table for in the next 12 months, what would it be?", "actionImplication": "Bring that answer, with a named consortium and a named internal owner, to your next leadership offsite -- not a technology readiness assessment." }
+      ]
+    }
+  ],
+  "quiz": [
+    { "questionId": "q1", "part": 1, "questionText": "Why did IBM/Maersk's TradeLens platform shut down despite being technically functional?", "options": { "A": "The blockchain technology had unresolved security flaws", "B": "Competitors refused to route trade data through a rival-owned platform", "C": "It was too slow for real-time shipment tracking", "D": "Regulators banned its use in international trade" }, "correctAnswer": "B", "explanation": "TradeLens failed on governance and neutrality, not technology." },
+    { "questionId": "q2", "part": 1, "questionText": "What is the primary business cost of the current paradigm?", "options": { "A": "Software licensing fees", "B": "Working capital tied up in reconciliation and dispute delays", "C": "Excess warehouse inventory", "D": "Higher shipping insurance premiums" }, "correctAnswer": "B", "explanation": "Redundant verification across parties delays settlement and ties up working capital." },
+    { "questionId": "q3", "part": 2, "questionText": "What was the actual innovation in Bitcoin's 2008 design?", "options": { "A": "Invention of cryptographic hashing", "B": "Removing the need for a trusted intermediary to maintain the record", "C": "Creation of the first digital currency", "D": "Introduction of the internet protocol for finance" }, "correctAnswer": "B", "explanation": "Cryptographic hashing predates 2008; the innovation was consensus without a central authority." },
+    { "questionId": "q4", "part": 2, "questionText": "Which ledger type suits a B2B retailer-supplier consortium?", "options": { "A": "Public ledger", "B": "Permissioned ledger", "C": "A shared spreadsheet", "D": "A public ledger with encrypted fields" }, "correctAnswer": "B", "explanation": "Permissioned ledgers fit consortiums of known, accountable parties." },
+    { "questionId": "q5", "part": 3, "questionText": "What made the mango traceability query drop from 7 days to 2.2 seconds?", "options": { "A": "A faster internal database server", "B": "Simultaneous shared-ledger propagation replacing sequential verification", "C": "Reducing the number of suppliers", "D": "Switching to air freight" }, "correctAnswer": "B", "explanation": "The architectural shift is simultaneous visibility versus sequential, siloed verification." },
+    { "questionId": "q6", "part": 3, "questionText": "What triggers automatic payment release in the smart contract simulation?", "options": { "A": "A purchasing manager's manual approval", "B": "A pre-agreed condition evaluating true against an on-ledger delivery event", "C": "The end of the calendar month", "D": "A phone call confirming receipt" }, "correctAnswer": "B", "explanation": "Smart contracts execute automatically when coded conditions are met by ledger data." },
+    { "questionId": "q7", "part": 4, "questionText": "What differentiates Tracr's model from Food Trust's model?", "options": { "A": "Tracr uses blockchain; Food Trust does not", "B": "Tracr monetizes provenance as a premium criterion; Food Trust mandates traceability for compliance", "C": "Food Trust is a public blockchain; Tracr is not", "D": "There is no meaningful difference" }, "correctAnswer": "B", "explanation": "Same technology, different value capture logic." },
+    { "questionId": "q8", "part": 4, "questionText": "Which revenue model is least crowded and most sought after by banks?", "options": { "A": "Platform access fees", "B": "Verified-data consumer premium", "C": "Financing collateral using ledger data", "D": "Advertising on the platform" }, "correctAnswer": "C", "explanation": "The financing-collateral model de-risks supply chain lending and is the least saturated opportunity." },
+    { "questionId": "q9", "part": 5, "questionText": "Why is writing personal data onto a public immutable ledger a regulatory risk?", "options": { "A": "It increases transaction fees", "B": "GDPR's right to erasure cannot be honored on data that cannot be deleted", "C": "It violates international shipping law", "D": "It slows down consensus validation" }, "correctAnswer": "B", "explanation": "Immutability directly conflicts with GDPR's erasure requirement." },
+    { "questionId": "q10", "part": 6, "questionText": "What is the real strategic question leaders should be answering?", "options": { "A": "Whether to adopt blockchain technology at all", "B": "Which consortium to help govern before its rules are set by someone else", "C": "How to reduce IT infrastructure costs", "D": "Whether to outsource supply chain management entirely" }, "correctAnswer": "B", "explanation": "Late entrants join consortiums on terms they didn't help write." }
+  ],
+  "certificate": {
+    "enabled": true,
+    "title": "Certificate of Participation",
+    "issuedBy": "SIDTM, Symbiosis International University",
+    "authorizedSignatory": "Dr. Natraj N. A.",
+    "gatingRule": "quiz-score-threshold",
+    "passThreshold": 6
+  }
+};
+
+const professionalColors = ['#003f5c','#4d648d','#2f4b7c','#665191','#a05195','#d45087','#f95d6a','#ff7c43','#ffa600'];
+const QUIZ_STORAGE_KEY = 'sss_quiz_attempts';
+const PART_MAX = {1:2,2:2,3:2,4:2,5:1,6:1};
+
+let screens = [];   // flattened {partNumber, partName, accentRef, icon, opening, isFirstInPart, slide}
+let current = 0;
+let quizState = null; // {order, idx, answers, score, partScore}
+
+function escapeHtml(str){
+  if(str===undefined || str===null) return '';
+  return String(str).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function buildScreens(content){
+  const out = [];
+  content.parts.forEach(part=>{
+    part.slides.forEach(slide=>{
+      out.push({
+        partNumber: part.partNumber,
+        partName: part.partName,
+        accentRef: part.accentRef || null,
+        icon: part.icon || null,
+        opening: part.opening || null,
+        isFirstInPart: part.slides[0] === slide,
+        slide
+      });
+    });
+  });
+  out.push({partNumber:7, partName:'Assessment', accentRef:null, icon:null, opening:null, isFirstInPart:false, slide:{type:'quiz-start'}});
+  out.push({partNumber:7, partName:'Assessment', accentRef:null, icon:null, opening:null, isFirstInPart:false, slide:{type:'quiz-container'}});
+  out.push({partNumber:7, partName:'Assessment', accentRef:null, icon:null, opening:null, isFirstInPart:false, slide:{type:'quiz-results'}});
+  return out;
+}
+
+function applyTheme(theme){
+  const root = document.documentElement;
+  root.style.setProperty('--color-p1', theme.palette.p1);
+  root.style.setProperty('--color-p2', theme.palette.p2);
+  root.style.setProperty('--color-p3', theme.palette.p3);
+  root.style.setProperty('--color-p4', theme.palette.p4);
+  root.style.setProperty('--color-p5', theme.palette.p5);
+  root.style.setProperty('--color-p6', theme.palette.p6);
+}
+
+function bridgingBlock(b){
+  if(!b) return '';
+  const labels = {'business-implication':'Business implication','market-opportunity':'Market opportunity','strategic-risk':'Strategic risk'};
+  return `<div class="bridging"><div class="kind">${labels[b.kind]||b.kind}</div>${escapeHtml(b.text)}</div>`;
+}
+
+function renderSlideBody(screen){
+  const s = screen.slide;
+  const openingHtml = screen.isFirstInPart && screen.opening
+    ? `<div class="part-opening" style="color:var(--color-${screen.accentRef})">${escapeHtml(screen.opening.text)}</div>` : '';
+
+  switch(s.type){
+    case 'title':
+      return `<div class="title-slide"><h1>${escapeHtml(s.topic)}</h1><p class="caption">${escapeHtml(s.faculty)}</p></div>`;
+
+    case 'statement':
+      return `${openingHtml}<div class="slide-statement"><h1>${escapeHtml(s.headline)}</h1><p class="subhead">${escapeHtml(s.subhead)}</p></div>`;
+
+    case 'evidence':
+      return `${openingHtml}<h2>${escapeHtml(s.headline)}</h2>
+        <div class="evidence-stat">${escapeHtml(s.statistic.value)}${escapeHtml(s.statistic.unit||'')}</div>
+        <p>${escapeHtml(s.statistic.label)}</p>
+        <p class="evidence-source">&mdash; ${escapeHtml(s.source)}</p>
+        ${s.contextLines.map(l=>`<p>${escapeHtml(l)}</p>`).join('')}
+        ${bridgingBlock(s.bridging)}`;
+
+    case 'comparison-matrix':
+      return `${openingHtml}<h2>${escapeHtml(s.headline)}</h2>
+        <table class="comparison"><thead><tr>${s.columns.map(c=>`<th>${escapeHtml(c)}</th>`).join('')}</tr></thead>
+        <tbody>${s.rows.map(r=>`<tr><td>${escapeHtml(r.label)}</td>${r.values.map(v=>`<td>${escapeHtml(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>
+        ${bridgingBlock(s.bridging)}`;
+
+    case 'process-flow':
+      return `${openingHtml}<h2>${escapeHtml(s.headline)}</h2>
+        <div class="process-steps">${s.steps.map((st,i)=>`
+          <div class="process-step">
+            <div class="step-num">STEP ${i+1}</div>
+            <span style="display:flex;align-items:center;gap:8px;margin:6px 0;">
+              ${st.icon?`<svg width="20" height="20"><use href="#${st.icon}"/></svg>`:''}<strong>${escapeHtml(st.label)}</strong>
+            </span>
+            <p class="caption">${escapeHtml(st.description)}</p>
+          </div>`).join('')}</div>
+        ${bridgingBlock(s.bridging)}`;
+
+    case 'case-study':
+      return `${openingHtml}<h2>${escapeHtml(s.company)}${s.year?` (${s.year})`:''}</h2>
+        <div class="case-card">
+          <div class="badge" style="background:var(--color-${screen.accentRef})">${escapeHtml(s.badgeInitials||s.company.slice(0,2).toUpperCase())}</div>
+          <dl class="case-fields">
+            <dt>Challenge</dt><dd>${escapeHtml(s.challenge)}</dd>
+            <dt>Decision</dt><dd>${escapeHtml(s.decision)}</dd>
+            <dt>Outcome</dt><dd>${escapeHtml(s.outcome)}</dd>
+          </dl>
+        </div>
+        ${bridgingBlock(s.bridging)}`;
+
+    case 'simulation':
+      return `${openingHtml}<h2>${escapeHtml(s.headline)}</h2>
+        <div class="sim-layout">
+          <div class="sim-explain">
+            <p>${escapeHtml(s.explanation)}</p>
+            <button class="btn-sim" data-sim="${s.simulationTemplate}" data-slide="${s.slideId}" aria-label="${escapeHtml(s.buttonLabel)}">${escapeHtml(s.buttonLabel)}</button>
+          </div>
+          <div class="sim-stage" id="stage-${s.slideId}">
+            ${s.simulationTemplate==='network-growth' ? renderNetworkGrowthSvg(s)
+              : s.simulationTemplate==='before-after-toggle' ? renderBeforeAfterSvg(s)
+              : `<div class="sim-stub">Simulation template &ldquo;${escapeHtml(s.simulationTemplate)}&rdquo; not yet implemented in engine.template.html.<br>Explanation and data are wired up; rendering is pending.</div>`}
+          </div>
+        </div>
+        ${bridgingBlock(s.bridging)}`;
+
+    case 'strategic-pause':
+      return `<div class="strategic-pause">
+        <div class="sp-block"><div class="sp-label">Synthesis</div><h2>${escapeHtml(s.synthesisStatement)}</h2></div>
+        <div class="sp-block"><div class="sp-label">Reflect</div><p>${escapeHtml(s.reflectionQuestion)}</p></div>
+        <div class="sp-block"><div class="sp-label">Action for a leader</div><p><strong>${escapeHtml(s.actionImplication)}</strong></p></div>
+      </div>`;
+
+    case 'data-story': {
+      const max = Math.max(...s.dataPoints.map(d=>d.value), 1);
+      return `${openingHtml}<h2>${escapeHtml(s.headline)}</h2>
+        <div class="data-story-chart">${s.dataPoints.map(d=>`
+          <div class="bar-wrap"><div class="bar" style="height:${(d.value/max*100).toFixed(1)}%"></div>
+          <div class="bar-label">${escapeHtml(d.label)}</div></div>`).join('')}</div>
+        <p class="caption">${(s.annotations||[]).map(escapeHtml).join(' &middot; ')} &mdash; ${escapeHtml(s.source)}</p>
+        ${bridgingBlock(s.bridging)}`;
+    }
+
+    case 'framework-card':
+      return `${openingHtml}<h2>${escapeHtml(s.headline)}</h2><h3>${escapeHtml(s.frameworkName)}</h3>
+        <ul class="framework-labels">${s.diagramLabels.map(l=>`<li>${escapeHtml(l)}</li>`).join('')}</ul>
+        ${bridgingBlock(s.bridging)}`;
+
+    case 'quiz-start':
+      return renderQuizStartHtml();
+
+    case 'quiz-container':
+      return `<div class="quiz-container"><div id="quizBody"></div></div>`;
+
+    case 'quiz-results':
+      return `<div class="quiz-results"><h2>Results</h2><div id="resultsBody"></div></div>`;
+
+    default:
+      return `<p>Unknown slide type: ${escapeHtml(s.type)}</p>`;
+  }
+}
+
+function renderNetworkGrowthSvg(s){
+  const labels = (s.simulationData && s.simulationData.nodeLabels) || ['A','B','C'];
+  return `<svg viewBox="0 0 600 400" preserveAspectRatio="xMidYMid meet" role="img" id="svg-${s.slideId}">
+    <title>Network propagation simulation</title>
+    <desc>Nodes light up in sequence as a ledger update propagates across the network.</desc>
+    <g id="lines-${s.slideId}"></g>
+    <g id="nodes-${s.slideId}"></g>
+  </svg>`;
+}
+
+// --- Network-growth simulation: real rAF-driven animation, per Section 9 rules ---
+const simState = {}; // slideId -> {running, raf, step, total, startTime}
+
+function initNetworkSim(slideId, labels){
+  const svg = document.getElementById(`svg-${slideId}`);
+  if(!svg) return;
+  const nodesG = document.getElementById(`nodes-${slideId}`);
+  const linesG = document.getElementById(`lines-${slideId}`);
+  nodesG.innerHTML = ''; linesG.innerHTML = '';
+  const n = labels.length;
+  const cx = 300, cy = 200, r = 130;
+  const coords = labels.map((_,i)=>{
+    const angle = (i/n)*Math.PI*2 - Math.PI/2;
+    return {x: cx + r*Math.cos(angle), y: cy + r*Math.sin(angle)};
+  });
+  coords.forEach((c,i)=>{
+    if(i>0){
+      const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1', coords[0].x); line.setAttribute('y1', coords[0].y);
+      line.setAttribute('x2', c.x); line.setAttribute('y2', c.y);
+      line.setAttribute('stroke', 'var(--border-color)'); line.setAttribute('stroke-width','2');
+      line.setAttribute('data-target', i);
+      linesG.appendChild(line);
+    }
+    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx', c.x); circle.setAttribute('cy', c.y); circle.setAttribute('r', 8);
+    circle.setAttribute('fill', i===0 ? 'var(--color-p3)' : 'var(--border-color)');
+    circle.setAttribute('data-index', i);
+    nodesG.appendChild(circle);
+    const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x', c.x); text.setAttribute('y', c.y - 14);
+    text.setAttribute('text-anchor','middle'); text.setAttribute('font-size','12');
+    text.setAttribute('fill','var(--text-muted)'); text.textContent = labels[i];
+    nodesG.appendChild(text);
+  });
+  simState[slideId] = {running:false, raf:null, step:0, total:n, startTime:null};
+}
+
+function runNetworkSim(slideId){
+  const st = simState[slideId];
+  if(!st || st.running) return;
+  st.running = true; st.step = 1; st.startTime = null;
+  const stepDurationMs = 500;
+
+  function frame(ts){
+    if(!st.startTime) st.startTime = ts;
+    const elapsed = ts - st.startTime;
+    const targetStep = Math.min(st.total, 1 + Math.floor(elapsed/stepDurationMs));
+    if(targetStep > st.step || (targetStep===1 && st.step<1)){
+      for(let i=st.step; i<targetStep; i++){
+        const circle = document.querySelector(`#nodes-${slideId} circle[data-index="${i}"]`);
+        const line = document.querySelector(`#lines-${slideId} line[data-target="${i}"]`);
+        if(circle) circle.setAttribute('fill','var(--color-p3)');
+        if(line) line.setAttribute('stroke','var(--color-p3)');
+      }
+      st.step = targetStep;
+    }
+    if(st.step < st.total){
+      st.raf = requestAnimationFrame(frame);
+    } else {
+      st.running = false;
+    }
+  }
+  st.raf = requestAnimationFrame(frame);
+}
+
+function resetNetworkSim(slideId, labels){
+  const st = simState[slideId];
+  if(st && st.raf) cancelAnimationFrame(st.raf);
+  initNetworkSim(slideId, labels);
+}
+
+// --- Before/after-toggle simulation: token travels from a "before" box to an "after" box ---
+function renderBeforeAfterSvg(s){
+  const d = s.simulationData || {};
+  const beforeLabel = d.beforeLabel || 'Before';
+  const afterLabel = d.afterLabel || 'After';
+  return `<svg viewBox="0 0 600 400" preserveAspectRatio="xMidYMid meet" role="img" id="svg-${s.slideId}">
+    <title>Before and after comparison</title>
+    <desc>A marker travels from the before state to the after state when run.</desc>
+    <rect x="60" y="140" width="200" height="120" rx="10" fill="var(--surface-color)" fill-opacity="1" stroke="var(--border-color)" stroke-width="2" id="before-box-${s.slideId}"/>
+    <text x="160" y="128" text-anchor="middle" font-size="13" fill="var(--text-muted)">BEFORE</text>
+    <foreignObject x="70" y="160" width="180" height="80"><div xmlns="http://www.w3.org/1999/xhtml" style="font-family:Inter,sans-serif;font-size:13px;text-align:center;color:var(--text-main);">${escapeHtml(beforeLabel)}</div></foreignObject>
+    <rect x="340" y="140" width="200" height="120" rx="10" fill="var(--surface-color)" fill-opacity="0.4" stroke="var(--border-color)" stroke-width="2" id="after-box-${s.slideId}"/>
+    <text x="440" y="128" text-anchor="middle" font-size="13" fill="var(--text-muted)">AFTER</text>
+    <foreignObject x="350" y="160" width="180" height="80"><div xmlns="http://www.w3.org/1999/xhtml" style="font-family:Inter,sans-serif;font-size:13px;text-align:center;color:var(--text-main);">${escapeHtml(afterLabel)}</div></foreignObject>
+    <line x1="260" y1="200" x2="340" y2="200" stroke="var(--border-color)" stroke-width="2" stroke-dasharray="6,6"/>
+    <circle cx="160" cy="200" r="12" fill="var(--color-p3)" id="token-${s.slideId}"/>
+  </svg>`;
+}
+
+const beforeAfterState = {}; // slideId -> {raf, running, startTime}
+
+function initBeforeAfterSim(slideId){
+  const token = document.getElementById(`token-${slideId}`);
+  if(!token) return;
+  const beforeBox = document.getElementById(`before-box-${slideId}`);
+  const afterBox = document.getElementById(`after-box-${slideId}`);
+  token.setAttribute('cx', 160);
+  beforeBox.setAttribute('fill-opacity', '1');
+  beforeBox.setAttribute('stroke', 'var(--border-color)');
+  afterBox.setAttribute('fill-opacity', '0.4');
+  afterBox.setAttribute('stroke', 'var(--border-color)');
+  beforeAfterState[slideId] = {raf:null, running:false, startTime:null};
+}
+
+function runBeforeAfterSim(slideId){
+  const st = beforeAfterState[slideId];
+  if(!st || st.running) return;
+  st.running = true; st.startTime = null;
+  const token = document.getElementById(`token-${slideId}`);
+  const beforeBox = document.getElementById(`before-box-${slideId}`);
+  const afterBox = document.getElementById(`after-box-${slideId}`);
+  const duration = 1200, startX = 160, endX = 440;
+
+  function frame(ts){
+    if(!st.startTime) st.startTime = ts;
+    const elapsed = ts - st.startTime;
+    const t = Math.min(1, elapsed/duration);
+    const eased = t<0.5 ? 2*t*t : -1+(4-2*t)*t;
+    token.setAttribute('cx', String(startX + (endX-startX)*eased));
+    if(t >= 0.5){ beforeBox.setAttribute('fill-opacity', String(Math.max(0.4, 1-(t-0.5)*1.2))); }
+    if(t >= 0.7){
+      afterBox.setAttribute('fill-opacity', String(Math.min(1, 0.4+(t-0.7)*2)));
+      afterBox.setAttribute('stroke', 'var(--color-p3)');
+    }
+    if(t < 1){
+      st.raf = requestAnimationFrame(frame);
+    } else {
+      token.setAttribute('cx', String(endX));
+      afterBox.setAttribute('fill-opacity','1');
+      st.running = false;
+    }
+  }
+  st.raf = requestAnimationFrame(frame);
+}
+
+function resetBeforeAfterSim(slideId){
+  const st = beforeAfterState[slideId];
+  if(st && st.raf) cancelAnimationFrame(st.raf);
+  initBeforeAfterSim(slideId);
+}
+
+function getSlideById(id){
+  for(const part of SSS_CONTENT.parts){
+    for(const s of part.slides){ if(s.slideId===id) return s; }
+  }
+  return null;
+}
+
+// --- Quiz engine ---
+function shuffleArray(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+function initQuizState(){
+  const order = shuffleArray(SSS_CONTENT.quiz.map((_,i)=>i));
+  quizState = { order, idx:0, answers:{}, score:0, partScore:{1:0,2:0,3:0,4:0,5:0,6:0} };
+}
+
+function renderQuizStartHtml(){
+  return `<div class="quiz-start">
+    <h1>Assessment</h1>
+    <p>10 questions, roughly 2 per Part, testing strategic understanding rather than recall. Answers lock immediately after selection, with an explanation for each. Your last 3 attempts are saved on this device for comparison.</p>
+    <button class="btn-primary" id="quizStartBtn">Start Assessment</button>
+  </div>`;
+}
+
+function renderQuizQuestion(){
+  const container = document.getElementById('quizBody');
+  if(!container || !quizState) return;
+  const qIndex = quizState.order[quizState.idx];
+  const q = SSS_CONTENT.quiz[qIndex];
+  const answered = quizState.answers[qIndex] !== undefined;
+  const selected = quizState.answers[qIndex];
+  const letters = ['A','B','C','D'];
+  container.innerHTML = `
+    <span class="quiz-progress mono">Question ${quizState.idx+1} of ${SSS_CONTENT.quiz.length} &mdash; Part ${q.part}</span>
+    <h2>${escapeHtml(q.questionText)}</h2>
+    <div class="quiz-options" role="listbox" aria-label="Answer options">
+      ${letters.map(L=>{
+        let cls='quiz-option';
+        if(answered){
+          if(L===q.correctAnswer) cls+=' correct';
+          else if(L===selected) cls+=' incorrect';
+          cls+=' locked';
+        }
+        return `<button class="${cls}" data-letter="${L}" ${answered?'disabled':''} aria-label="Option ${L}: ${escapeHtml(q.options[L])}">${L}. ${escapeHtml(q.options[L])}</button>`;
+      }).join('')}
+    </div>
+    ${answered ? `<div class="quiz-explanation"><strong>${selected===q.correctAnswer?'Correct.':'Not quite.'}</strong> ${escapeHtml(q.explanation)}</div>
+      <button class="btn-primary" id="quizNextBtn">${quizState.idx+1 < SSS_CONTENT.quiz.length ? 'Next Question' : 'See Results'}</button>` : ''}
+  `;
+}
+
+function finishQuiz(){
+  const attempt = {score: quizState.score, breakdown: Object.assign({}, quizState.partScore), timestamp: new Date().toISOString()};
+  let attempts = [];
+  try{ attempts = JSON.parse(localStorage.getItem(QUIZ_STORAGE_KEY) || '[]'); }catch(e){ attempts = []; }
+  attempts.push(attempt);
+  if(attempts.length > 3) attempts = attempts.slice(attempts.length-3);
+  localStorage.setItem(QUIZ_STORAGE_KEY, JSON.stringify(attempts));
+  goToSlide(current+1, 'forward');
+  renderQuizResults(attempts);
+}
+
+function performanceLabel(score){
+  if(score<=4) return 'Revisit the foundations — these concepts will come up in every case.';
+  if(score<=7) return 'Solid grasp — one focused re-read will close the gaps.';
+  return 'Ready to lead this conversation in the boardroom.';
+}
+
+function weakestPart(breakdown){
+  let weakest=1, weakestRatio=2;
+  for(const p of [1,2,3,4,5,6]){
+    const ratio = breakdown[p]/PART_MAX[p];
+    if(ratio < weakestRatio){ weakestRatio=ratio; weakest=parseInt(p,10); }
+  }
+  return weakest;
+}
+
+function renderQuizResults(attempts){
+  const container = document.getElementById('resultsBody');
+  if(!container) return;
+  if(!attempts || !attempts.length){
+    container.innerHTML = '<p>Complete the assessment first to see your results.</p>';
+    return;
+  }
+  const latest = attempts[attempts.length-1];
+  const prev = attempts.length>1 ? attempts[attempts.length-2] : null;
+  const wp = weakestPart(latest.breakdown);
+  const wpScreen = screens.find(s=>s.partNumber===wp);
+  const partName = wpScreen ? wpScreen.partName : `Part ${wp}`;
+  container.innerHTML = `
+    <div class="score-display">${latest.score} / 10</div>
+    <p>${performanceLabel(latest.score)}</p>
+    ${prev ? `<p class="caption">Previous attempt: ${prev.score} / 10</p>` : ''}
+    <div class="part-breakdown">
+      ${[1,2,3,4,5,6].map(p=>`<div class="pb-cell"><div class="pb-label">Part ${p}</div><div class="pb-score">${latest.breakdown[p]}/${PART_MAX[p]}</div></div>`).join('')}
+    </div>
+    <div class="weakest-callout">
+      You may want to revisit <strong>${escapeHtml(partName)}</strong> &mdash;
+      <button class="link-btn" data-jump-part="${wp}">tap to jump back</button>.
+    </div>
+    <button class="btn-primary" id="quizRetakeBtn">Retake Quiz</button>
+    <p class="caption">${attempts.length} of 3 attempts stored on this device.</p>
+  `;
+}
+
+function quizContainerIndex(){
+  return screens.findIndex(s=>s.slide.type==='quiz-container');
+}
+function quizResultsIndex(){
+  return screens.findIndex(s=>s.slide.type==='quiz-results');
+}
+function partFirstSlideIndex(partNumber){
+  return screens.findIndex(s=>s.partNumber===partNumber);
+}
+
+document.addEventListener('click', (e)=>{
+  // Simulation trigger (network-growth only implemented)
+  const simBtn = e.target.closest('.btn-sim');
+  if(simBtn){
+    const template = simBtn.dataset.sim;
+    const slideId = simBtn.dataset.slide;
+    const isResetLabel = simBtn.textContent.trim() === 'Reset';
+    if(template === 'network-growth'){
+      const labels = getSlideById(slideId).simulationData.nodeLabels || ['A','B','C'];
+      if(isResetLabel){
+        // Second press: stop and return to initial state, relabel for the next run.
+        resetNetworkSim(slideId, labels);
+        simBtn.textContent = getSlideById(slideId).buttonLabel || 'Run Simulation';
+      } else {
+        // First press (or after a manual reset): actually run it.
+        resetNetworkSim(slideId, labels);
+        simBtn.textContent = 'Reset';
+        runNetworkSim(slideId);
+      }
+    } else if(template === 'before-after-toggle'){
+      if(isResetLabel){
+        resetBeforeAfterSim(slideId);
+        simBtn.textContent = getSlideById(slideId).buttonLabel || 'Run Simulation';
+      } else {
+        resetBeforeAfterSim(slideId);
+        simBtn.textContent = 'Reset';
+        runBeforeAfterSim(slideId);
+      }
+    }
+    return;
+  }
+
+  // Quiz interactions
+  const startBtn = e.target.closest('#quizStartBtn');
+  if(startBtn){
+    initQuizState();
+    goToSlide(quizContainerIndex(), 'forward');
+    renderQuizQuestion();
+    return;
+  }
+  const optBtn = e.target.closest('.quiz-option');
+  if(optBtn && !optBtn.disabled && quizState){
+    const qIndex = quizState.order[quizState.idx];
+    const q = SSS_CONTENT.quiz[qIndex];
+    const letter = optBtn.dataset.letter;
+    quizState.answers[qIndex] = letter;
+    if(letter === q.correctAnswer){ quizState.score++; quizState.partScore[q.part]++; }
+    renderQuizQuestion();
+    return;
+  }
+  const nextQBtn = e.target.closest('#quizNextBtn');
+  if(nextQBtn && quizState){
+    if(quizState.idx+1 < SSS_CONTENT.quiz.length){
+      quizState.idx++;
+      renderQuizQuestion();
+    } else {
+      finishQuiz();
+    }
+    return;
+  }
+  const retakeBtn = e.target.closest('#quizRetakeBtn');
+  if(retakeBtn){
+    initQuizState();
+    goToSlide(quizContainerIndex(), 'jump');
+    renderQuizQuestion();
+    return;
+  }
+  const jumpBtn = e.target.closest('[data-jump-part]');
+  if(jumpBtn){
+    goToSlide(partFirstSlideIndex(parseInt(jumpBtn.dataset.jumpPart,10)), 'jump');
+    return;
+  }
+});
+
+// --- Deck assembly & navigation ---
+function buildDeckDom(){
+  const deck = document.getElementById('deck');
+  deck.innerHTML = '';
+  screens.forEach((screen, i)=>{
+    const el = document.createElement('div');
+    el.className = 'slide' + (screen.slide.type==='simulation' ? ' sim-fade' : '');
+    el.dataset.index = i;
+    el.dataset.part = screen.partNumber;
+    if(screen.icon){
+      el.innerHTML = `<svg class="part-badge" style="color:var(--color-${screen.accentRef})"><use href="#${screen.icon}"/></svg>` + renderSlideBody(screen);
+    } else {
+      el.innerHTML = renderSlideBody(screen);
+    }
+    if(screen.partNumber > 0 && screen.partNumber < 7 && screen.slide.type==='strategic-pause'){
+      el.style.background = `color-mix(in srgb, var(--color-${screen.accentRef}) 12%, var(--bg-color))`;
+    }
+    deck.appendChild(el);
+  });
+}
+
+function updateCounter(idx){
+  const screen = screens[idx];
+  let partLabel;
+  if(screen.partNumber===0) partLabel = 'Title';
+  else if(screen.partNumber===7) partLabel = 'Assessment';
+  else partLabel = `Part ${screen.partNumber}: ${screen.partName}`;
+  document.getElementById('slideCounter').textContent = `Slide ${idx+1} / ${screens.length} — ${partLabel}`;
+  const pct = ((idx+1)/screens.length)*100;
+  const fill = document.getElementById('progressFill');
+  fill.style.width = pct + '%';
+  fill.style.background = screen.accentRef ? `var(--color-${screen.accentRef})` : 'var(--color-p1)';
+}
+
+function applySlideColors(idx){
+  const el = document.querySelector(`.slide[data-index="${idx}"]`);
+  if(!el) return;
+  const headings = el.querySelectorAll('h1,h2,h3');
+  headings.forEach((h,i)=>{ h.style.color = professionalColors[i % professionalColors.length]; });
+}
+
+function goToSlide(index, direction){
+  if(index < 0 || index >= screens.length) return;
+  const prevIndex = current;
+  const prevEl = document.querySelector(`.slide[data-index="${prevIndex}"]`);
+  const nextEl = document.querySelector(`.slide[data-index="${index}"]`);
+  const crossingPart = screens[prevIndex] && screens[prevIndex].partNumber !== screens[index].partNumber;
+
+  if(prevEl && prevEl !== nextEl){
+    prevEl.classList.toggle('part-boundary', crossingPart);
+    if(direction==='backward'){ prevEl.classList.add('exit-right'); }
+    else { prevEl.classList.add('exit-left'); }
+    prevEl.classList.remove('active');
+  }
+  if(direction==='backward'){ nextEl.classList.add('enter-left'); }
+  else if(direction==='forward'){ nextEl.classList.add('enter-right'); }
+
+  requestAnimationFrame(()=>{
+    nextEl.classList.remove('enter-left','enter-right');
+    nextEl.classList.add('active');
+    setTimeout(()=>{ if(prevEl) prevEl.classList.remove('exit-left','exit-right','part-boundary'); }, 300);
+  });
+
+  current = index;
+  updateCounter(index);
+  applySlideColors(index);
+
+  const activeScreen = screens[index];
+  if(activeScreen.slide.type==='quiz-container' && !quizState){
+    initQuizState();
+    renderQuizQuestion();
+  }
+  if(activeScreen.slide.type==='quiz-results'){
+    let attempts = [];
+    try{ attempts = JSON.parse(localStorage.getItem(QUIZ_STORAGE_KEY) || '[]'); }catch(e){ attempts = []; }
+    renderQuizResults(attempts);
+  }
+}
+
+document.getElementById('nextBtn').addEventListener('click', ()=>goToSlide(current+1,'forward'));
+document.getElementById('prevBtn').addEventListener('click', ()=>goToSlide(current-1,'backward'));
+document.addEventListener('keydown', (e)=>{
+  if(e.target.closest('.quiz-options')) return; // let native button Tab/Enter handle option focus
+  if(e.key==='ArrowRight') goToSlide(current+1,'forward');
+  if(e.key==='ArrowLeft') goToSlide(current-1,'backward');
+});
+
+document.getElementById('themeToggle').addEventListener('click', ()=>{
+  const isDark = document.body.getAttribute('data-theme')==='dark';
+  document.body.setAttribute('data-theme', isDark ? 'light':'dark');
+  localStorage.setItem('sss_theme', isDark ? 'light':'dark');
+});
+document.getElementById('printBtn').addEventListener('click', ()=>window.print());
+document.getElementById('fullscreenBtn').addEventListener('click', ()=>{
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+});
+
+// --- Init ---
+(function init(){
+  if(!SSS_CONTENT){ document.getElementById('deck').innerHTML = '<p style="padding:40px">No content loaded. This file needs SSS_CONTENT injected by build.py.</p>'; return; }
+  const savedTheme = localStorage.getItem('sss_theme');
+  if(savedTheme) document.body.setAttribute('data-theme', savedTheme);
+  applyTheme(SSS_CONTENT.theme);
+  screens = buildScreens(SSS_CONTENT);
+  buildDeckDom();
+  goToSlide(0, 'jump');
+  document.querySelector('.slide[data-index="0"]').classList.add('active');
+
+  screens.forEach(screen=>{
+    if(screen.slide.type==='simulation'){
+      if(screen.slide.simulationTemplate==='network-growth'){
+        initNetworkSim(screen.slide.slideId, screen.slide.simulationData.nodeLabels || ['A','B','C']);
+      } else if(screen.slide.simulationTemplate==='before-after-toggle'){
+        initBeforeAfterSim(screen.slide.slideId);
+      }
+    }
+  });
+})();
+</script>
+</body>
+</html>
