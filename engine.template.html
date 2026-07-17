@@ -316,6 +316,8 @@ function renderSlideBody(screen){
             ${s.simulationTemplate==='network-growth' ? renderNetworkGrowthSvg(s)
               : s.simulationTemplate==='before-after-toggle' ? renderBeforeAfterSvg(s)
               : s.simulationTemplate==='flow-reveal' ? renderFlowRevealSvg(s)
+              : s.simulationTemplate==='decision-tree' ? renderDecisionTreeSvg(s)
+              : s.simulationTemplate==='data-story-reveal' ? renderDataStoryRevealSvg(s)
               : `<div class="sim-stub">Simulation template &ldquo;${escapeHtml(s.simulationTemplate)}&rdquo; not yet implemented in engine.template.html.<br>Explanation and data are wired up; rendering is pending.</div>`}
           </div>
         </div>
@@ -655,6 +657,178 @@ function resetFlowRevealSim(slideId, stages){
   initFlowRevealSim(slideId, stages);
 }
 
+// --- Decision-tree simulation: a shared root decision reveals into 2-4 branches in sequence ---
+// Content contract: simulationData = { "branches": [ { "label": "...", "detail": "..." }, ... ] }
+// (2-4 branches recommended). Defensive fallbacks accept "options"/"choices"/"paths"/"nodes" as arrays,
+// plain strings, or no usable array at all (e.g. "nodes" given as a plain descriptive string).
+function getDecisionBranches(s){
+  const d = (s && s.simulationData) || {};
+  let arr = d.branches || d.options || d.choices || d.paths || (Array.isArray(d.nodes) ? d.nodes : null);
+  if(!Array.isArray(arr)){
+    const firstArrayProp = Object.values(d).find(v => Array.isArray(v) && v.length);
+    arr = firstArrayProp || [];
+  }
+  if(!arr.length){
+    arr = ['Option A','Option B','Option C'];
+  }
+  return arr.map((item, i)=>{
+    if(typeof item === 'string') return {label: item, detail: ''};
+    return {
+      label: (item && (item.label || item.title || item.name || item.branch)) || `Option ${String.fromCharCode(65+i)}`,
+      detail: (item && (item.detail || item.description || item.text || item.outcome || item.explanation)) || ''
+    };
+  });
+}
+
+function renderDecisionTreeSvg(s){
+  const branches = getDecisionBranches(s);
+  const n = branches.length;
+  const boxW = 150, boxH = 70, gap = 20;
+  const rowW = n*boxW + (n-1)*gap;
+  const viewW = Math.max(600, rowW + 40);
+  const rootW = 160, rootH = 56, rootX = viewW/2, rootY = 30;
+  const branchY = 130;
+  const startX = (viewW - rowW) / 2;
+  let branchesSvg = '', linesSvg = '';
+  branches.forEach((b, i)=>{
+    const x = startX + i*(boxW+gap);
+    const cx = x + boxW/2;
+    linesSvg += `<line x1="${rootX}" y1="${rootY+rootH}" x2="${cx}" y2="${branchY}" stroke="var(--border-color)" stroke-width="2" id="decline-${s.slideId}-${i}"/>`;
+    branchesSvg += `<rect x="${x}" y="${branchY}" width="${boxW}" height="${boxH}" rx="10" fill="var(--surface-color)" stroke="var(--border-color)" stroke-width="2" id="decbox-${s.slideId}-${i}"/>
+      <foreignObject x="${x+6}" y="${branchY}" width="${boxW-12}" height="${boxH}"><div xmlns="http://www.w3.org/1999/xhtml" style="font-family:Inter,sans-serif;font-size:12px;font-weight:600;text-align:center;color:var(--text-main);display:flex;align-items:center;justify-content:center;height:100%;">${escapeHtml(b.label)}</div></foreignObject>`;
+  });
+  return `<svg viewBox="0 0 ${viewW} 280" preserveAspectRatio="xMidYMid meet" role="img" id="svg-${s.slideId}">
+    <title>Decision tree simulation</title>
+    <desc>Each branch reveals in sequence from a shared root decision point.</desc>
+    <rect x="${rootX-rootW/2}" y="${rootY}" width="${rootW}" height="${rootH}" rx="10" fill="var(--color-p3)" stroke="var(--border-color)" stroke-width="2" id="decroot-${s.slideId}"/>
+    <foreignObject x="${rootX-rootW/2+6}" y="${rootY}" width="${rootW-12}" height="${rootH}"><div xmlns="http://www.w3.org/1999/xhtml" style="font-family:Inter,sans-serif;font-size:12px;font-weight:600;text-align:center;color:#fff;display:flex;align-items:center;justify-content:center;height:100%;">Decision Point</div></foreignObject>
+    ${linesSvg}
+    ${branchesSvg}
+    <foreignObject x="20" y="${branchY+boxH+18}" width="${viewW-40}" height="70"><div xmlns="http://www.w3.org/1999/xhtml" id="decdetail-${s.slideId}" style="font-family:Inter,sans-serif;font-size:13px;text-align:center;color:var(--text-muted);"></div></foreignObject>
+  </svg>`;
+}
+
+const decisionTreeState = {}; // slideId -> {raf, running, step, total, startTime, branches}
+
+function initDecisionTreeSim(slideId, branches){
+  branches.forEach((b, i)=>{
+    const box = document.getElementById(`decbox-${slideId}-${i}`);
+    if(box) box.setAttribute('fill', 'var(--surface-color)');
+    const line = document.getElementById(`decline-${slideId}-${i}`);
+    if(line) line.setAttribute('stroke', 'var(--border-color)');
+  });
+  const detail = document.getElementById(`decdetail-${slideId}`);
+  if(detail) detail.textContent = '';
+  decisionTreeState[slideId] = {raf:null, running:false, step:-1, total:branches.length, startTime:null, branches};
+}
+
+function runDecisionTreeSim(slideId){
+  const st = decisionTreeState[slideId];
+  if(!st || st.running || st.total<1) return;
+  st.running = true; st.step = -1; st.startTime = null;
+  const stepDurationMs = 700;
+
+  function frame(ts){
+    if(!st.startTime) st.startTime = ts;
+    const elapsed = ts - st.startTime;
+    const targetStep = Math.min(st.total-1, Math.floor(elapsed/stepDurationMs));
+    if(targetStep > st.step){
+      for(let i=st.step+1; i<=targetStep; i++){
+        const box = document.getElementById(`decbox-${slideId}-${i}`);
+        const line = document.getElementById(`decline-${slideId}-${i}`);
+        if(box) box.setAttribute('fill','var(--color-p3)');
+        if(line) line.setAttribute('stroke','var(--color-p3)');
+      }
+      st.step = targetStep;
+      const detail = document.getElementById(`decdetail-${slideId}`);
+      if(detail) detail.textContent = st.branches[st.step] ? st.branches[st.step].detail : '';
+    }
+    if(st.step < st.total-1){
+      st.raf = requestAnimationFrame(frame);
+    } else {
+      st.running = false;
+    }
+  }
+  st.raf = requestAnimationFrame(frame);
+}
+
+function resetDecisionTreeSim(slideId, branches){
+  const st = decisionTreeState[slideId];
+  if(st && st.raf) cancelAnimationFrame(st.raf);
+  initDecisionTreeSim(slideId, branches);
+}
+
+// --- Data-story-reveal simulation: a bar chart whose bars grow into place one at a time on Run ---
+// Reuses the static .data-story-chart/.bar/.bar-label CSS (plain HTML, not SVG -- the existing
+// `transition:height 600ms ease` on .bar does the animating, so this uses setTimeout staggering
+// rather than rAF; the rAF-only rule in this file applies to SVG presentation attributes, not CSS).
+// Content contract: simulationData = { "dataPoints": [ { "label": "...", "value": number }, ... ] }
+// Defensive fallbacks accept "points"/"bars"/"series"/"scenarios" (plain strings get placeholder
+// ascending values), or no usable array at all.
+function getDataStoryPoints(s){
+  const d = (s && s.simulationData) || {};
+  let arr = d.dataPoints || d.points || d.bars || d.series || d.scenarios;
+  if(!Array.isArray(arr)){
+    const firstArrayProp = Object.values(d).find(v => Array.isArray(v) && v.length);
+    arr = firstArrayProp || [];
+  }
+  if(!arr.length){
+    arr = ['A','B','C'];
+  }
+  return arr.map((item, i)=>{
+    if(typeof item === 'string') return {label: item, value: 30 + i*25};
+    return {
+      label: (item && (item.label || item.title || item.name)) || `Item ${i+1}`,
+      value: (item && typeof item.value === 'number') ? item.value : 30 + i*25
+    };
+  });
+}
+
+function renderDataStoryRevealSvg(s){
+  const points = getDataStoryPoints(s);
+  return `<div class="data-story-chart" id="dsr-chart-${s.slideId}" style="width:100%;padding:0 24px;">
+    ${points.map((p,i)=>`
+      <div class="bar-wrap">
+        <div class="bar" id="dsr-bar-${s.slideId}-${i}" style="height:0%"></div>
+        <div class="bar-label">${escapeHtml(p.label)}</div>
+      </div>`).join('')}
+  </div>`;
+}
+
+const dataStoryRevealState = {}; // slideId -> {timers, running, points}
+
+function initDataStoryRevealSim(slideId, points){
+  points.forEach((p, i)=>{
+    const bar = document.getElementById(`dsr-bar-${slideId}-${i}`);
+    if(bar) bar.style.height = '0%';
+  });
+  const st = dataStoryRevealState[slideId];
+  if(st && st.timers) st.timers.forEach(t=>clearTimeout(t));
+  dataStoryRevealState[slideId] = {timers:[], running:false, points};
+}
+
+function runDataStoryRevealSim(slideId){
+  const st = dataStoryRevealState[slideId];
+  if(!st || st.running) return;
+  st.running = true;
+  const max = Math.max(...st.points.map(p=>p.value), 1);
+  const stepDelayMs = 350;
+  st.points.forEach((p, i)=>{
+    const t = setTimeout(()=>{
+      const bar = document.getElementById(`dsr-bar-${slideId}-${i}`);
+      if(bar) bar.style.height = (p.value/max*100).toFixed(1) + '%';
+      if(i === st.points.length-1) st.running = false;
+    }, i*stepDelayMs);
+    st.timers.push(t);
+  });
+}
+
+function resetDataStoryRevealSim(slideId, points){
+  const st = dataStoryRevealState[slideId];
+  if(st && st.timers) st.timers.forEach(t=>clearTimeout(t));
+  initDataStoryRevealSim(slideId, points);
+}
+
 function getSlideById(id){
   for(const part of SSS_CONTENT.parts){
     for(const s of part.slides){ if(s.slideId===id) return s; }
@@ -813,6 +987,26 @@ document.addEventListener('click', (e)=>{
         resetFlowRevealSim(slideId, stages);
         simBtn.textContent = 'Reset';
         runFlowRevealSim(slideId);
+      }
+    } else if(template === 'decision-tree'){
+      const branches = getDecisionBranches(getSlideById(slideId));
+      if(isResetLabel){
+        resetDecisionTreeSim(slideId, branches);
+        simBtn.textContent = getSlideById(slideId).buttonLabel || 'Run Simulation';
+      } else {
+        resetDecisionTreeSim(slideId, branches);
+        simBtn.textContent = 'Reset';
+        runDecisionTreeSim(slideId);
+      }
+    } else if(template === 'data-story-reveal'){
+      const points = getDataStoryPoints(getSlideById(slideId));
+      if(isResetLabel){
+        resetDataStoryRevealSim(slideId, points);
+        simBtn.textContent = getSlideById(slideId).buttonLabel || 'Run Simulation';
+      } else {
+        resetDataStoryRevealSim(slideId, points);
+        simBtn.textContent = 'Reset';
+        runDataStoryRevealSim(slideId);
       }
     }
     return;
@@ -977,6 +1171,10 @@ document.getElementById('fullscreenBtn').addEventListener('click', ()=>{
         initBeforeAfterSim(screen.slide.slideId);
       } else if(screen.slide.simulationTemplate==='flow-reveal'){
         initFlowRevealSim(screen.slide.slideId, getFlowStages(screen.slide));
+      } else if(screen.slide.simulationTemplate==='decision-tree'){
+        initDecisionTreeSim(screen.slide.slideId, getDecisionBranches(screen.slide));
+      } else if(screen.slide.simulationTemplate==='data-story-reveal'){
+        initDataStoryRevealSim(screen.slide.slideId, getDataStoryPoints(screen.slide));
       }
     }
   });
