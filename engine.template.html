@@ -315,6 +315,7 @@ function renderSlideBody(screen){
           <div class="sim-stage" id="stage-${s.slideId}">
             ${s.simulationTemplate==='network-growth' ? renderNetworkGrowthSvg(s)
               : s.simulationTemplate==='before-after-toggle' ? renderBeforeAfterSvg(s)
+              : s.simulationTemplate==='flow-reveal' ? renderFlowRevealSvg(s)
               : `<div class="sim-stub">Simulation template &ldquo;${escapeHtml(s.simulationTemplate)}&rdquo; not yet implemented in engine.template.html.<br>Explanation and data are wired up; rendering is pending.</div>`}
           </div>
         </div>
@@ -550,6 +551,110 @@ function resetBeforeAfterSim(slideId){
   initBeforeAfterSim(slideId);
 }
 
+// --- Flow-reveal simulation: a sequence of stages light up left-to-right, one at a time ---
+// Content contract: simulationData = { "stages": [ { "label": "...", "detail": "..." }, ... ] }
+// (3-6 stages recommended). Defensive fallbacks below also accept "steps"/"flow"/"sequence"/"items",
+// plain strings instead of {label,detail} objects, or no usable data at all.
+function getFlowStages(s){
+  const d = (s && s.simulationData) || {};
+  let arr = d.stages || d.steps || d.flow || d.sequence || d.items;
+  if(!Array.isArray(arr)){
+    const firstArrayProp = Object.values(d).find(v => Array.isArray(v) && v.length);
+    arr = firstArrayProp || [];
+  }
+  if(!arr.length){
+    arr = ['Step 1','Step 2','Step 3'];
+  }
+  return arr.map((item, i)=>{
+    if(typeof item === 'string') return {label: item, detail: ''};
+    return {
+      label: (item && (item.label || item.title || item.name || item.stage)) || `Step ${i+1}`,
+      detail: (item && (item.detail || item.description || item.text || item.explanation)) || ''
+    };
+  });
+}
+
+function renderFlowRevealSvg(s){
+  const stages = getFlowStages(s);
+  const n = stages.length;
+  const boxW = 140, boxH = 80, gap = 24;
+  const rowW = n*boxW + (n-1)*gap;
+  const viewW = Math.max(600, rowW + 40);
+  const startX = (viewW - rowW) / 2;
+  let boxesSvg = '', arrowsSvg = '';
+  stages.forEach((st, i)=>{
+    const x = startX + i*(boxW+gap);
+    if(i>0){
+      const prevRight = startX + (i-1)*(boxW+gap) + boxW;
+      arrowsSvg += `<line x1="${prevRight}" y1="${70+boxH/2}" x2="${x}" y2="${70+boxH/2}" stroke="var(--border-color)" stroke-width="2" marker-end="url(#flow-arrow-${s.slideId})" id="flowline-${s.slideId}-${i}"/>`;
+    }
+    boxesSvg += `<rect x="${x}" y="70" width="${boxW}" height="${boxH}" rx="10" fill="var(--surface-color)" stroke="var(--border-color)" stroke-width="2" id="flowbox-${s.slideId}-${i}"/>
+      <foreignObject x="${x+6}" y="70" width="${boxW-12}" height="${boxH}"><div xmlns="http://www.w3.org/1999/xhtml" style="font-family:Inter,sans-serif;font-size:12px;font-weight:600;text-align:center;color:var(--text-main);display:flex;align-items:center;justify-content:center;height:100%;">${escapeHtml(st.label)}</div></foreignObject>`;
+  });
+  return `<svg viewBox="0 0 ${viewW} 260" preserveAspectRatio="xMidYMid meet" role="img" id="svg-${s.slideId}">
+    <title>Step-by-step flow simulation</title>
+    <desc>Stages light up in sequence, left to right, as the process runs.</desc>
+    <defs>
+      <marker id="flow-arrow-${s.slideId}" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" fill="var(--border-color)"/>
+      </marker>
+    </defs>
+    ${arrowsSvg}
+    ${boxesSvg}
+    <foreignObject x="20" y="170" width="${viewW-40}" height="70"><div xmlns="http://www.w3.org/1999/xhtml" id="flowdetail-${s.slideId}" style="font-family:Inter,sans-serif;font-size:13px;text-align:center;color:var(--text-muted);">${escapeHtml(stages[0].detail)}</div></foreignObject>
+  </svg>`;
+}
+
+const flowRevealState = {}; // slideId -> {raf, running, step, total, startTime, stages}
+
+function initFlowRevealSim(slideId, stages){
+  stages.forEach((st, i)=>{
+    const box = document.getElementById(`flowbox-${slideId}-${i}`);
+    if(box) box.setAttribute('fill', i===0 ? 'var(--color-p3)' : 'var(--surface-color)');
+    const line = document.getElementById(`flowline-${slideId}-${i}`);
+    if(line) line.setAttribute('stroke', 'var(--border-color)');
+  });
+  const detail = document.getElementById(`flowdetail-${slideId}`);
+  if(detail) detail.textContent = stages[0] ? stages[0].detail : '';
+  flowRevealState[slideId] = {raf:null, running:false, step:0, total:stages.length, startTime:null, stages};
+}
+
+function runFlowRevealSim(slideId){
+  const st = flowRevealState[slideId];
+  if(!st || st.running || st.total<2) return;
+  st.running = true; st.step = 0; st.startTime = null;
+  const stepDurationMs = 700;
+
+  function frame(ts){
+    if(!st.startTime) st.startTime = ts;
+    const elapsed = ts - st.startTime;
+    const targetStep = Math.min(st.total-1, Math.floor(elapsed/stepDurationMs));
+    if(targetStep > st.step){
+      for(let i=st.step+1; i<=targetStep; i++){
+        const box = document.getElementById(`flowbox-${slideId}-${i}`);
+        const line = document.getElementById(`flowline-${slideId}-${i}`);
+        if(box) box.setAttribute('fill','var(--color-p3)');
+        if(line) line.setAttribute('stroke','var(--color-p3)');
+      }
+      st.step = targetStep;
+      const detail = document.getElementById(`flowdetail-${slideId}`);
+      if(detail) detail.textContent = st.stages[st.step] ? st.stages[st.step].detail : '';
+    }
+    if(st.step < st.total-1){
+      st.raf = requestAnimationFrame(frame);
+    } else {
+      st.running = false;
+    }
+  }
+  st.raf = requestAnimationFrame(frame);
+}
+
+function resetFlowRevealSim(slideId, stages){
+  const st = flowRevealState[slideId];
+  if(st && st.raf) cancelAnimationFrame(st.raf);
+  initFlowRevealSim(slideId, stages);
+}
+
 function getSlideById(id){
   for(const part of SSS_CONTENT.parts){
     for(const s of part.slides){ if(s.slideId===id) return s; }
@@ -698,6 +803,16 @@ document.addEventListener('click', (e)=>{
         resetBeforeAfterSim(slideId);
         simBtn.textContent = 'Reset';
         runBeforeAfterSim(slideId);
+      }
+    } else if(template === 'flow-reveal'){
+      const stages = getFlowStages(getSlideById(slideId));
+      if(isResetLabel){
+        resetFlowRevealSim(slideId, stages);
+        simBtn.textContent = getSlideById(slideId).buttonLabel || 'Run Simulation';
+      } else {
+        resetFlowRevealSim(slideId, stages);
+        simBtn.textContent = 'Reset';
+        runFlowRevealSim(slideId);
       }
     }
     return;
@@ -860,6 +975,8 @@ document.getElementById('fullscreenBtn').addEventListener('click', ()=>{
         initNetworkSim(screen.slide.slideId, screen.slide.simulationData.nodeLabels || ['A','B','C']);
       } else if(screen.slide.simulationTemplate==='before-after-toggle'){
         initBeforeAfterSim(screen.slide.slideId);
+      } else if(screen.slide.simulationTemplate==='flow-reveal'){
+        initFlowRevealSim(screen.slide.slideId, getFlowStages(screen.slide));
       }
     }
   });
