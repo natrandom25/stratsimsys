@@ -5,14 +5,17 @@ A no-backend, client-side generator for interactive classroom slide decks built 
 Two domains are supported today: **MBA / EMBA / Executive Education** and **Software & Systems Engineering** (distributed systems, databases, networking, security, ML infrastructure — not embedded, electrical, or mechanical engineering). Each domain has its own voice rules, bridging framework, Part structure, and slide-type menu; they share the same rendering engine.
 
 ## How it works
+
+```
 Studio (index.html)
-→ pick a domain, fill in deck metadata
-→ "Generate Prompt" fetches the matching schema and builds a copy-paste prompt
-→ paste that into Claude, ChatGPT, or any LLM
-→ paste the LLM's JSON response back into Studio
-→ "Validate" checks it against the deck's structural rules
-→ "Build Deck" merges it with engine.template.html
-→ download one self-contained .html file — the finished deck
+  → pick a domain, fill in deck metadata
+  → "Generate Prompt" fetches the matching schema and builds a copy-paste prompt
+  → paste that into Claude, ChatGPT, or any LLM
+  → paste the LLM's JSON response back into Studio
+  → "Validate" checks it against the deck's structural rules
+  → "Build Deck" merges it with engine.template.html
+  → download one self-contained .html file — the finished deck
+```
 
 `build.py` does the same merge from the command line if you'd rather script it: `python build.py content.json output.html`.
 
@@ -36,9 +39,9 @@ Deploy from the repo root via GitHub Pages (Settings → Pages → Deploy from b
 
 ## What's built vs. not
 
-**Working:** both domains end to end (prompt generation, validation, build, download); quiz engine with scoring, Part-breakdown results, retake, and localStorage persistence; 2 of 5 simulation templates (`network-growth`, `before-after-toggle`); dark mode; print stylesheet; 5 named theme palettes.
+**Working:** both domains end to end (prompt generation, validation, build, download); quiz engine with scoring, Part-breakdown results, retake, and localStorage persistence; 3 of 5 simulation templates (`network-growth`, `before-after-toggle`, `flow-reveal`); dark mode; print stylesheet; 5 named theme palettes.
 
-**Not yet built:** 3 of 5 simulation templates (`decision-tree`, `data-story-reveal`, `flow-reveal` render a labeled placeholder rather than an animation); bookmarking; certificate rendering (the schema supports certificate configuration, but the engine doesn't yet render a certificate screen); full keyboard roving-focus on quiz options (Tab/Enter work, arrow-key navigation between options doesn't).
+**Not yet built:** 2 of 5 simulation templates (`decision-tree`, `data-story-reveal` render a labeled placeholder rather than an animation); bookmarking; certificate rendering (the schema supports certificate configuration, but the engine doesn't yet render a certificate screen); full keyboard roving-focus on quiz options (Tab/Enter work, arrow-key navigation between options doesn't).
 
 **Testing status:** built and hand-traced logic-by-logic, but not yet run end-to-end in a live browser. Test both domains in Studio before relying on either for a real class.
 
