@@ -39,9 +39,9 @@ Deploy from the repo root via GitHub Pages (Settings → Pages → Deploy from b
 
 ## What's built vs. not
 
-**Working:** both domains end to end (prompt generation, validation, build, download); quiz engine with scoring, Part-breakdown results, retake, and localStorage persistence; 3 of 5 simulation templates (`network-growth`, `before-after-toggle`, `flow-reveal`); dark mode; print stylesheet; 5 named theme palettes.
+**Working:** both domains end to end (prompt generation, validation, build, download); quiz engine with scoring, Part-breakdown results, retake, and localStorage persistence; all 5 simulation templates (`network-growth`, `before-after-toggle`, `flow-reveal`, `decision-tree`, `data-story-reveal`); dark mode; print stylesheet; 5 named theme palettes.
 
-**Not yet built:** 2 of 5 simulation templates (`decision-tree`, `data-story-reveal` render a labeled placeholder rather than an animation); bookmarking; certificate rendering (the schema supports certificate configuration, but the engine doesn't yet render a certificate screen); full keyboard roving-focus on quiz options (Tab/Enter work, arrow-key navigation between options doesn't).
+**Not yet built:** bookmarking; certificate rendering (the schema supports certificate configuration, but the engine doesn't yet render a certificate screen); full keyboard roving-focus on quiz options (Tab/Enter work, arrow-key navigation between options doesn't).
 
 **Testing status:** built and hand-traced logic-by-logic, but not yet run end-to-end in a live browser. Test both domains in Studio before relying on either for a real class.
 
