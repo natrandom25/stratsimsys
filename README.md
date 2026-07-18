@@ -32,6 +32,7 @@ All files sit at repo root — Studio's fetch calls assume `index.html`, `engine
 - `content.example.json` — a worked MBA example ("Blockchain in Supply Chain Management").
 - `deck-blockchain-supply-chain.html` — that example, already built into a standalone deck.
 - `SSS-Engineering-Spec-DRAFT.md` — the pedagogical spec for the Engineering domain (voice rules, bridging taxonomy, Part structure, slide types) that `content-engineering.schema.json` implements.
+- `content-blockchain-intro.json`, `content-blockchain-beyond-crypto.json`, `content-network-infrastructure.json`, `content-network-architectures.json`, `content-network-of-networks.json`, `content-network-components.json` — six more worked examples, reverse-engineered from real hand-taught masterclasses (not generated fresh) and validated against `content.schema.json`. Each has a documented list of what was extracted faithfully vs. adapted to fit the schema's fixed slide-count/quiz-distribution rules — worth a read before reusing one as a template, since a few (noted per-file) needed real slides dropped or new synthesis text written to fit the 6-Part structure.
 
 ## Hosting
 
@@ -39,9 +40,9 @@ Deploy from the repo root via GitHub Pages (Settings → Pages → Deploy from b
 
 ## What's built vs. not
 
-**Working:** both domains end to end (prompt generation, validation, build, download); quiz engine with scoring, Part-breakdown results, retake, and localStorage persistence; all 5 simulation templates (`network-growth`, `before-after-toggle`, `flow-reveal`, `decision-tree`, `data-story-reveal`); dark mode; print stylesheet; 5 named theme palettes.
+**Working:** both domains end to end (prompt generation, validation, build, download); quiz engine with scoring, Part-breakdown results, retake, and localStorage persistence; all 5 simulation templates (`network-growth`, `before-after-toggle`, `flow-reveal`, `decision-tree`, `data-story-reveal`); certificate rendering, gated on `certificate.gatingRule` and generated as a standalone printable HTML file; dark mode; print stylesheet; 5 named theme palettes.
 
-**Not yet built:** bookmarking; certificate rendering (the schema supports certificate configuration, but the engine doesn't yet render a certificate screen); full keyboard roving-focus on quiz options (Tab/Enter work, arrow-key navigation between options doesn't).
+**Not yet built:** bookmarking; full keyboard roving-focus on quiz options (Tab/Enter work, arrow-key navigation between options doesn't).
 
 **Testing status:** built and hand-traced logic-by-logic, but not yet run end-to-end in a live browser. Test both domains in Studio before relying on either for a real class.
 

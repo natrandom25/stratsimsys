@@ -427,7 +427,7 @@
         },
         "passThreshold": { "type": "integer", "minimum": 0, "maximum": 10 }
       },
-      "if": { "properties": { "gatingRule": { "const": "quiz-score-threshold" } } },
+      "if": { "properties": { "gatingRule": { "const": "quiz-score-threshold" } }, "required": ["gatingRule"] },
       "then": { "required": ["passThreshold"] }
     }
   }
