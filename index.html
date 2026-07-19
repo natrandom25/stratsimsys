@@ -34,13 +34,19 @@ button:disabled{opacity:0.5;cursor:not-allowed;}
 .success-box{background:#e8f5e9;border:1px solid #b9dfbc;border-radius:8px;padding:12px 16px;margin-top:12px;color:#1a5e20;font-size:0.9rem;}
 .cert-fields{display:none;}
 .cert-fields.show{display:block;}
+.theme-swatches{display:flex;gap:6px;margin:10px 0 20px;}
+.theme-swatches .swatch{flex:1;height:34px;border-radius:6px;border:1px solid rgba(0,0,0,0.08);position:relative;}
+.theme-swatches .swatch::after{content:attr(data-label);position:absolute;bottom:-16px;left:0;right:0;text-align:center;font-size:9px;color:var(--muted);}
+.theme-swatches .swatch-edit{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.theme-swatches .swatch-edit input[type=color]{width:100%;height:34px;padding:0;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:none;}
+.theme-swatches .swatch-edit span{font-size:9px;color:var(--muted);}
 #previewFrame{width:100%;height:520px;border:1px solid var(--border);border-radius:var(--radius);margin-top:16px;}
 .status{font-size:0.85rem;color:var(--muted);margin-top:8px;}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Strat. Sim. Sys Studio</h1>
+  <h1>SSS Studio</h1>
   <p class="intro">Fill in your deck details, generate a prompt, hand it to any LLM, paste back what it gives you, and download a ready-to-teach slide deck. Covers two domains &mdash; MBA/EMBA and Software &amp; Systems Engineering. Runs entirely in your browser &mdash; no API key, no backend, nothing sent anywhere. One requirement: open this page through its web address (the link you were given, or GitHub Pages), not by double-clicking the file on your computer &mdash; opened as a local file, the steps below won't load.</p>
 
   <div class="step">
@@ -62,33 +68,34 @@ button:disabled{opacity:0.5;cursor:not-allowed;}
       </div>
     </div>
     <div class="grid-3">
-      <div><label for="facultyName">Faculty name</label><input type="text" id="facultyName" value="Dr. Natraj N. A."></div>
-      <div><label for="facultyTitle">Faculty title</label><input type="text" id="facultyTitle" value="Assistant Professor (Grade-11), SIDTM"></div>
-      <div><label for="facultyEmail">Faculty email</label><input type="email" id="facultyEmail" value="natraj@sidtm.edu.in"></div>
+      <div><label for="facultyName">Faculty name</label><input type="text" id="facultyName" placeholder="e.g. Dr. Jane Smith"></div>
+      <div><label for="facultyTitle">Faculty title</label><input type="text" id="facultyTitle" placeholder="e.g. Associate Professor, Marketing"></div>
+      <div><label for="facultyEmail">Faculty email</label><input type="email" id="facultyEmail" placeholder="e.g. jane.smith@university.edu"></div>
     </div>
-    <div><label for="institution">Institution</label><input type="text" id="institution" value="Symbiosis International University, Pune - 412115"></div>
+    <div><label for="institution">Institution</label><input type="text" id="institution" placeholder="e.g. Indian Institute of Management, Ahmedabad"></div>
     <div class="grid-3">
       <div><label for="courseCode">Course code</label><input type="text" id="courseCode" placeholder="e.g. SCM-712"></div>
       <div><label for="subjectName">Subject name</label><input type="text" id="subjectName" placeholder="e.g. Digital Supply Chain Strategy"></div>
       <div><label for="batch">Batch</label><input type="text" id="batch" placeholder="e.g. PGDM 2025-27"></div>
     </div>
-    <div class="grid-3">
+    <div class="grid">
       <div><label for="academicYear">Academic year</label><input type="text" id="academicYear" placeholder="e.g. 2026-27"></div>
       <div><label for="duration">Duration</label><input type="text" id="duration" value="2 Hours"></div>
-      <div><label for="slideCountPreset">Slide count</label><select id="slideCountPreset"><option>40</option><option>50</option><option>60</option></select></div>
     </div>
     <label for="theme">Theme</label>
     <select id="theme"><option>Academic</option><option>Corporate</option><option>Dark</option><option>Telecom</option><option>Blockchain</option></select>
-    <p class="hint">Each theme is a fixed 6-color palette. Part accent colors are semantic (Section 5/6 of the master prompt), so they aren't freely recolorable here.</p>
+    <p class="hint">Picks a starting 6-color palette for the six Parts. The presets are close in hue by design (Section 5/6 of the master prompt ties icons to accent slots) -- check "Customize" below if you want them more distinct.</p>
+    <div class="checkbox-row"><input type="checkbox" id="customizeColors"><label for="customizeColors" style="margin:0;">Customize this theme's 6 colors</label></div>
+    <div class="theme-swatches" id="themeSwatches"></div>
 
     <div class="checkbox-row"><input type="checkbox" id="certEnabled"><label for="certEnabled" style="margin:0;">Include a Certificate of Participation</label></div>
     <div class="cert-fields" id="certFields">
       <div class="grid">
         <div><label for="certTitle">Certificate title</label><input type="text" id="certTitle" value="Certificate of Participation"></div>
-        <div><label for="issuedBy">Issued by</label><input type="text" id="issuedBy" value="SIDTM, Symbiosis International University"></div>
+        <div><label for="issuedBy">Issued by</label><input type="text" id="issuedBy" placeholder="e.g. Your Department, Your Institution"></div>
       </div>
       <div class="grid">
-        <div><label for="authorizedSignatory">Authorized signatory</label><input type="text" id="authorizedSignatory" value="Dr. Natraj N. A."></div>
+        <div><label for="authorizedSignatory">Authorized signatory</label><input type="text" id="authorizedSignatory" placeholder="e.g. Dr. Jane Smith"></div>
         <div>
           <label for="gatingRule">Gating rule</label>
           <select id="gatingRule"><option value="none">None &mdash; anyone who reaches the results screen</option><option value="quiz-score-threshold" selected>Quiz score threshold</option></select>
@@ -152,6 +159,30 @@ function updateAudienceOptions(){
 document.getElementById('domain').addEventListener('change', updateAudienceOptions);
 updateAudienceOptions();
 
+function currentPalette(){
+  if(document.getElementById('customizeColors').checked){
+    const palette = {};
+    document.querySelectorAll('#themeSwatches input[type=color]').forEach(inp => {
+      palette[inp.dataset.key] = inp.value.toUpperCase();
+    });
+    return palette;
+  }
+  return THEME_PALETTES[document.getElementById('theme').value];
+}
+
+function renderThemeSwatches(){
+  const customize = document.getElementById('customizeColors').checked;
+  const palette = THEME_PALETTES[document.getElementById('theme').value];
+  const container = document.getElementById('themeSwatches');
+  container.innerHTML = Object.entries(palette).map(([key, hex]) => customize
+    ? `<div class="swatch-edit"><input type="color" value="${hex}" data-key="${key}"><span>${key}</span></div>`
+    : `<div class="swatch" style="background:${hex}" data-label="${key}" title="${key}: ${hex}"></div>`
+  ).join('');
+}
+document.getElementById('theme').addEventListener('change', renderThemeSwatches);
+document.getElementById('customizeColors').addEventListener('change', renderThemeSwatches);
+renderThemeSwatches();
+
 document.getElementById('certEnabled').addEventListener('change', (e)=>{
   document.getElementById('certFields').classList.toggle('show', e.target.checked);
 });
@@ -173,7 +204,7 @@ function collectMeta(){
     batch: document.getElementById('batch').value.trim(),
     academicYear: document.getElementById('academicYear').value.trim(),
     duration: document.getElementById('duration').value.trim(),
-    slideCountPreset: document.getElementById('slideCountPreset').value,
+    slideCountPreset: 40,
     themeName: document.getElementById('theme').value,
     certEnabled: document.getElementById('certEnabled').checked,
     certTitle: document.getElementById('certTitle').value.trim(),
@@ -192,7 +223,8 @@ Topic: ${meta.topic}
 Audience: ${meta.audience}
 Faculty: ${meta.facultyName}, ${meta.facultyTitle}, ${meta.institution} (${meta.facultyEmail})
 Course code: ${meta.courseCode}   Subject: ${meta.subjectName}   Batch: ${meta.batch}   Academic year: ${meta.academicYear}
-Duration: ${meta.duration}   Slide count preset: ${meta.slideCountPreset}
+Duration: ${meta.duration}
+Set meta.slideCountPreset to ${meta.slideCountPreset} in the output JSON -- this is a fixed schema value, not a slide-count target; actual deck length is fixed by the STRUCTURE REQUIREMENTS below.
 Theme: ${meta.themeName} -- use this exact palette in the "theme" object: ${JSON.stringify(palette)}
 Fonts: ${JSON.stringify(FONTS)}
 Certificate: ${meta.certEnabled ? `enabled, title "${meta.certTitle}", issued by "${meta.issuedBy}", signed by "${meta.authorizedSignatory}", gatingRule "${meta.gatingRule}"${meta.gatingRule==='quiz-score-threshold' ? `, passThreshold ${meta.passThreshold}` : ''}` : 'disabled (set certificate.enabled to false)'}
@@ -230,7 +262,8 @@ Topic: ${meta.topic}
 Audience: ${meta.audience}
 Faculty: ${meta.facultyName}, ${meta.facultyTitle}, ${meta.institution} (${meta.facultyEmail})
 Course code: ${meta.courseCode}   Subject: ${meta.subjectName}   Batch: ${meta.batch}   Academic year: ${meta.academicYear}
-Duration: ${meta.duration}   Slide count preset: ${meta.slideCountPreset}
+Duration: ${meta.duration}
+Set meta.slideCountPreset to ${meta.slideCountPreset} in the output JSON -- this is a fixed schema value, not a slide-count target; actual deck length is fixed by the STRUCTURE REQUIREMENTS below.
 Theme: ${meta.themeName} -- use this exact palette in the "theme" object: ${JSON.stringify(palette)}
 Fonts: ${JSON.stringify(FONTS)}
 Certificate: ${meta.certEnabled ? `enabled, title "${meta.certTitle}", issued by "${meta.issuedBy}", signed by "${meta.authorizedSignatory}", gatingRule "${meta.gatingRule}"${meta.gatingRule==='quiz-score-threshold' ? `, passThreshold ${meta.passThreshold}` : ''}` : 'disabled (set certificate.enabled to false)'}
@@ -297,7 +330,7 @@ document.getElementById('genPromptBtn').addEventListener('click', async () => {
   setStatus('promptStatus', 'Fetching schema...', false);
   try {
     const schemaText = await fetchText(SCHEMA_FILES[meta.domain]);
-    const palette = THEME_PALETTES[meta.themeName];
+    const palette = currentPalette();
     const prompt = meta.domain === 'mba'
       ? buildMbaPrompt(meta, schemaText, palette)
       : buildEngineeringPrompt(meta, schemaText, palette);
