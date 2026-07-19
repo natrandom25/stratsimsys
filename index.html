@@ -259,4 +259,279 @@ STRUCTURE REQUIREMENTS
 - Part 5 -- Failure Modes, Tradeoffs & Operational Risk (4-5 slides): what breaks, when this is the wrong choice, on-call burden.
 - Part 6 -- The Future & Engineering Roadmap Decisions (3-4 slides): close with a concrete "what would you design" scenario.
 - Each Part 1-6 needs exactly one "architecture-checkpoint" slide (NOT "strategic-pause" -- that type name belongs to the MBA domain only) as its closing synthesis.
-- Across the whole deck: at least 2 "simulation" slides in Part 3, at least 1 in Part 4, at least 1 more somewhere in Parts 1/2/5/6, and at least 5 total. "simulationTemplate" must be one of: "network-growth", "before-after-toggle", "decision-tree", "data-story-reveal", "flow-reveal" (all 5 render today). If you use "flow-reveal", set "simulationData" to {"stages": [{"label": "...", "detail": "..."}, ...]
+- Across the whole deck: at least 2 "simulation" slides in Part 3, at least 1 in Part 4, at least 1 more somewhere in Parts 1/2/5/6, and at least 5 total. "simulationTemplate" must be one of: "network-growth", "before-after-toggle", "decision-tree", "data-story-reveal", "flow-reveal" (all 5 render today). If you use "flow-reveal", set "simulationData" to {"stages": [{"label": "...", "detail": "..."}, ...]} with 3-6 stages. If you use "decision-tree", set "simulationData" to {"branches": [{"label": "...", "detail": "..."}, ...]} with 2-4 branches. If you use "data-story-reveal", set "simulationData" to {"dataPoints": [{"label": "...", "value": number}, ...]}.
+- Slide types beyond the shared menu are available in this domain: "architecture-diagram" (components array), "protocol-stack" (layers array), "algorithm-card" (steps + complexity + complexityExplanation -- always state what n is), "benchmark-card" (methodology + results + source), "mathematical-model" (formula in plain text/Unicode, no MathJax, + variables list). Use them where they fit better than a generic slide type.
+- "quiz" is an array of exactly 10 questions: 2 tagged to each of Part 1-4, 1 each to Part 5 and Part 6. Each needs "options" A-D and a "correctAnswer" in that set, plus a 2-3 sentence "explanation".
+
+OUTPUT FORMAT
+Return ONLY a single JSON object -- no markdown code fences, no commentary before or after -- that validates against this JSON Schema:
+
+${schemaText}
+`;
+}
+
+function setStatus(id, message, isError){
+  const el = document.getElementById(id);
+  el.textContent = message;
+  el.style.color = isError ? '#8a2b25' : 'var(--muted)';
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function fetchText(url){
+  const res = await fetch(url);
+  if(!res.ok) throw new Error(`Could not load ${url} (HTTP ${res.status})`);
+  return res.text();
+}
+
+document.getElementById('genPromptBtn').addEventListener('click', async () => {
+  const meta = collectMeta();
+  if(!meta.topic){
+    setStatus('promptStatus', 'Topic is required.', true);
+    return;
+  }
+  const btn = document.getElementById('genPromptBtn');
+  btn.disabled = true;
+  setStatus('promptStatus', 'Fetching schema...', false);
+  try {
+    const schemaText = await fetchText(SCHEMA_FILES[meta.domain]);
+    const palette = THEME_PALETTES[meta.themeName];
+    const prompt = meta.domain === 'mba'
+      ? buildMbaPrompt(meta, schemaText, palette)
+      : buildEngineeringPrompt(meta, schemaText, palette);
+    document.getElementById('promptOutput').value = prompt;
+    document.getElementById('copyPromptBtn').disabled = false;
+    setStatus('promptStatus', 'Prompt generated -- copy it and paste into your LLM of choice.', false);
+  } catch(err){
+    setStatus('promptStatus', `Failed to generate prompt: ${err.message}. This page must be served over http/https (not opened as a local file), with the schema files sitting alongside index.html.`, true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('copyPromptBtn').addEventListener('click', async () => {
+  const text = document.getElementById('promptOutput').value;
+  try {
+    await navigator.clipboard.writeText(text);
+    setStatus('promptStatus', 'Copied to clipboard.', false);
+  } catch(err){
+    setStatus('promptStatus', 'Could not copy automatically -- select the text in the box and copy manually.', true);
+  }
+});
+
+function resolveRef(ref, root){
+  let node = root;
+  for(const part of ref.replace(/^#\//,'').split('/')) node = node[part];
+  return node;
+}
+
+function matchesType(data, type){
+  switch(type){
+    case 'object': return data !== null && typeof data === 'object' && !Array.isArray(data);
+    case 'array': return Array.isArray(data);
+    case 'string': return typeof data === 'string';
+    case 'number': return typeof data === 'number';
+    case 'integer': return typeof data === 'number' && Number.isInteger(data);
+    case 'boolean': return typeof data === 'boolean';
+    case 'null': return data === null;
+    default: return true;
+  }
+}
+
+function describeType(data){
+  if(data === null) return 'null';
+  if(Array.isArray(data)) return 'array';
+  return typeof data;
+}
+
+// Hand-rolled subset of JSON Schema (Draft 2020-12) covering only the keywords
+// content.schema.json / content-engineering.schema.json actually use. Not a
+// general-purpose validator -- see validate.py for exhaustive checks.
+function validateNode(schema, data, path, root, errors){
+  if(schema.$ref) schema = resolveRef(schema.$ref, root);
+
+  if(schema.const !== undefined && JSON.stringify(data) !== JSON.stringify(schema.const)){
+    errors.push(`${path}: must equal ${JSON.stringify(schema.const)}`);
+  }
+  if(schema.enum && !schema.enum.some(v => JSON.stringify(v) === JSON.stringify(data))){
+    errors.push(`${path}: must be one of ${JSON.stringify(schema.enum)}`);
+  }
+  if(schema.type){
+    const types = Array.isArray(schema.type) ? schema.type : [schema.type];
+    if(!types.some(t => matchesType(data, t))){
+      errors.push(`${path}: expected type ${types.join('|')}, got ${describeType(data)}`);
+    }
+  }
+  if(schema.pattern && typeof data === 'string' && !(new RegExp(schema.pattern)).test(data)){
+    errors.push(`${path}: does not match pattern ${schema.pattern}`);
+  }
+  if(schema.format === 'email' && typeof data === 'string' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data)){
+    errors.push(`${path}: not a valid email`);
+  }
+  if(typeof data === 'string'){
+    if(schema.minLength !== undefined && data.length < schema.minLength) errors.push(`${path}: shorter than minLength ${schema.minLength}`);
+    if(schema.maxLength !== undefined && data.length > schema.maxLength) errors.push(`${path}: longer than maxLength ${schema.maxLength}`);
+  }
+  if(typeof data === 'number'){
+    if(schema.minimum !== undefined && data < schema.minimum) errors.push(`${path}: below minimum ${schema.minimum}`);
+    if(schema.maximum !== undefined && data > schema.maximum) errors.push(`${path}: above maximum ${schema.maximum}`);
+  }
+
+  if(data !== null && typeof data === 'object' && !Array.isArray(data)){
+    (schema.required || []).forEach(key => {
+      if(!(key in data)) errors.push(`${path}: missing required property "${key}"`);
+    });
+    if(schema.additionalProperties === false && schema.properties){
+      Object.keys(data).forEach(key => {
+        if(!(key in schema.properties)) errors.push(`${path}: unexpected property "${key}"`);
+      });
+    }
+    if(schema.properties){
+      Object.entries(schema.properties).forEach(([key, subschema]) => {
+        if(data[key] !== undefined) validateNode(subschema, data[key], `${path}.${key}`, root, errors);
+      });
+    }
+  }
+
+  if(Array.isArray(data)){
+    if(schema.minItems !== undefined && data.length < schema.minItems) errors.push(`${path}: has ${data.length} item(s), needs at least ${schema.minItems}`);
+    if(schema.maxItems !== undefined && data.length > schema.maxItems) errors.push(`${path}: has ${data.length} item(s), needs at most ${schema.maxItems}`);
+    if(schema.prefixItems){
+      schema.prefixItems.forEach((sub, i) => {
+        if(data[i] !== undefined) validateNode(sub, data[i], `${path}[${i}]`, root, errors);
+      });
+      if(schema.items === false && data.length > schema.prefixItems.length){
+        errors.push(`${path}: has ${data.length} items, more than the ${schema.prefixItems.length} allowed`);
+      }
+    } else if(schema.items && schema.items !== false){
+      data.forEach((item, i) => validateNode(schema.items, item, `${path}[${i}]`, root, errors));
+    }
+    if(schema.contains){
+      const matchCount = data.filter(item => {
+        const subErrors = [];
+        validateNode(schema.contains, item, path, root, subErrors);
+        return subErrors.length === 0;
+      }).length;
+      const min = schema.minContains !== undefined ? schema.minContains : 1;
+      const max = schema.maxContains !== undefined ? schema.maxContains : Infinity;
+      if(matchCount < min || matchCount > max){
+        errors.push(`${path}: expected ${min === max ? min : `${min}-${max}`} item(s) matching ${JSON.stringify(schema.contains)}, found ${matchCount}`);
+      }
+    }
+  }
+
+  if(schema.oneOf){
+    const passing = schema.oneOf.filter(sub => {
+      const subErrors = [];
+      validateNode(sub, data, path, root, subErrors);
+      return subErrors.length === 0;
+    });
+    if(passing.length !== 1) errors.push(`${path}: must match exactly one slide-type schema, matched ${passing.length}`);
+  }
+
+  if(schema.allOf) schema.allOf.forEach(sub => validateNode(sub, data, path, root, errors));
+
+  if(schema.if){
+    const ifErrors = [];
+    validateNode(schema.if, data, path, root, ifErrors);
+    if(ifErrors.length === 0 && schema.then) validateNode(schema.then, data, path, root, errors);
+  }
+}
+
+let cachedSchema = {};
+let lastValidContent = null;
+let builtHtml = null;
+
+document.getElementById('contentInput').addEventListener('input', () => {
+  lastValidContent = null;
+  builtHtml = null;
+  document.getElementById('buildBtn').disabled = true;
+  document.getElementById('downloadBtn').disabled = true;
+});
+
+document.getElementById('validateBtn').addEventListener('click', async () => {
+  const raw = document.getElementById('contentInput').value.trim();
+  const resultEl = document.getElementById('validateResult');
+  resultEl.innerHTML = '';
+  lastValidContent = null;
+  document.getElementById('buildBtn').disabled = true;
+
+  if(!raw){
+    resultEl.innerHTML = '<div class="error-list">Paste the LLM\'s JSON response first.</div>';
+    return;
+  }
+
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch(err){
+    resultEl.innerHTML = `<div class="error-list">Not valid JSON: ${escapeHtml(err.message)}</div>`;
+    return;
+  }
+
+  const domain = document.getElementById('domain').value;
+  let schema;
+  try {
+    if(!cachedSchema[domain]) cachedSchema[domain] = JSON.parse(await fetchText(SCHEMA_FILES[domain]));
+    schema = cachedSchema[domain];
+  } catch(err){
+    resultEl.innerHTML = `<div class="error-list">Could not load schema: ${escapeHtml(err.message)}</div>`;
+    return;
+  }
+
+  const errors = [];
+  validateNode(schema, data, '$', schema, errors);
+
+  if(errors.length){
+    const shown = errors.slice(0, 50);
+    resultEl.innerHTML = `<div class="error-list"><strong>${errors.length} issue(s) found:</strong><ul>${shown.map(e => `<li>${escapeHtml(e)}</li>`).join('')}</ul>${errors.length > shown.length ? `<div>...and ${errors.length - shown.length} more.</div>` : ''}</div>`;
+  } else {
+    resultEl.innerHTML = '<div class="success-box">Structurally valid. Continue to Build Deck below. (This checks structure only, not prose quality or cross-slide-type variety -- run validate.py for the exhaustive check.)</div>';
+    lastValidContent = raw;
+    document.getElementById('buildBtn').disabled = false;
+  }
+});
+
+document.getElementById('buildBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('buildStatus');
+  if(!lastValidContent){
+    statusEl.textContent = 'Validate the content first.';
+    return;
+  }
+  statusEl.textContent = 'Building...';
+  try {
+    const template = await fetchText('engine.template.html');
+    if(!template.includes(PLACEHOLDER)){
+      throw new Error('engine.template.html is missing the expected content placeholder.');
+    }
+    builtHtml = template.replace(PLACEHOLDER, lastValidContent);
+    const frame = document.getElementById('previewFrame');
+    frame.style.display = 'block';
+    frame.srcdoc = builtHtml;
+    document.getElementById('downloadBtn').disabled = false;
+    statusEl.textContent = 'Deck built. Preview above; download when ready.';
+  } catch(err){
+    statusEl.textContent = `Build failed: ${err.message}`;
+  }
+});
+
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  if(!builtHtml) return;
+  const meta = collectMeta();
+  const slug = (meta.topic || 'deck').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'deck';
+  const blob = new Blob([builtHtml], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `deck-${slug}.html`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+</script>
+</body>
+</html>
+
